@@ -34,7 +34,7 @@ async function transcribeAudio(audioBlob) {
         }
 
         const transcription = await response.text(); // Leer la respuesta como texto plano
-        console.log("✅ Transcripción recibida:", transcription);
+        console.log("Whisper devuelve transcripción con éxito:", transcription);
 
         return transcription; // Devolver directamente la transcripción
     } catch (error) {

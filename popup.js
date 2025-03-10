@@ -7,18 +7,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const transcriptionText = document.getElementById("transcription");
 
     if (!startButton || !stopButton || !transcriptionText) {
-        console.error("No se encontraron los elementos en popup.html");
+        console.error("❌ No se encontraron los elementos en popup.html");
         return;
     }
 
     async function requestMicrophonePermission() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            stream.getTracks().forEach(track => track.stop()); 
-            console.log("Permiso de micrófono concedido.");
+            stream.getTracks().forEach(track => track.stop());
+            console.log("✅ Permiso de micrófono concedido.");
             return true;
         } catch (error) {
-            console.error("Permiso de micrófono denegado:", error);
+            console.error("❌ Permiso de micrófono denegado:", error);
             alert("Permiso de micrófono denegado. Habilítalo en la configuración del navegador.");
             return false;
         }
@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!permissionGranted) return;
 
         try {
-            console.log("Iniciando grabación de audio...");
+            console.log("🎤 Iniciando grabación de audio...");
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
             audioChunks = [];
@@ -41,48 +41,78 @@ document.addEventListener("DOMContentLoaded", () => {
             };
 
             mediaRecorder.onstop = async () => {
-                console.log("Deteniendo grabación de audio...");
+                console.log("⏹️ Deteniendo grabación de audio...");
                 const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-            
-                console.log("Blob de audio generado:", audioBlob);
-                console.log("Tipo de Blob:", audioBlob.type);
-                console.log("Tamaño del Blob:", audioBlob.size, "bytes");
-            
-                // 🔥 Enviar directamente el Blob sin convertirlo en ArrayBuffer
+                console.log("📂 Blob de audio generado:", audioBlob);
+
                 const reader = new FileReader();
-                reader.readAsDataURL(audioBlob); // Convertimos el audio en base64 para evitar pérdida de datos
-            
+                reader.readAsDataURL(audioBlob);
+
                 reader.onloadend = () => {
-                    console.log("Enviando audio al background.js...");
+                    console.log("🚀 Enviando audio al background.js...");
                     chrome.runtime.sendMessage(
                         {
                             action: "transcribeAudio",
-                            audioData: reader.result // Ahora enviamos una URL en base64
+                            audioData: reader.result
                         },
                         response => {
                             if (chrome.runtime.lastError) {
-                                console.error("Error en el mensaje a background.js:", chrome.runtime.lastError.message);
+                                console.error("❌ Error en el mensaje a background.js:", chrome.runtime.lastError.message);
                                 transcriptionText.innerText = "Error en la comunicación con la API.";
                                 return;
                             }
-            
+
                             if (response && response.transcription) {
-                                transcriptionText.innerText = response.transcription;
+                                console.log("📩 Respuesta recibida:", response);
+
+                                try {
+                                    // 🛠️ Limpiar delimitadores de código y espacios
+                                    let rawText = response.respuesta.trim();
+
+                                    // 🔥 Eliminar cualquier posible bloque ```json ```
+                                    rawText = rawText.replace(/```json|```/g, "").trim();
+
+                                    // 🔍 Verificamos si realmente es un JSON
+                                    if (!rawText.startsWith("[") || !rawText.endsWith("]")) {
+                                        throw new Error("⚠️ La respuesta de OpenAI no es un JSON válido.");
+                                    }
+
+                                    // 🔥 Convertir a un array JSON
+                                    let opciones = JSON.parse(rawText);
+
+                                    if (!Array.isArray(opciones) || opciones.length < 3) {
+                                        throw new Error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
+                                    }
+
+                                    let transcripcionOriginal = opciones[0].replace(/^transcripcionOriginal:\s*/, "").trim();
+                                    let mensajeCorregido = opciones[1].replace(/^mensajeCorregido:\s*/, "").trim();
+                                    let mensajeReformulado = opciones[2].replace(/^mensajeReformulado:\s*/, "").trim();
+                                    let mensajeIngles = opciones.length > 3 ? opciones[3].replace(/^mensajeIngles:\s*/, "").trim() : "";
+
+                                    // 🖊️ Mostrar resultados en el popup sin los nombres de los campos
+                                    transcriptionText.innerHTML = `
+                                        <p><strong>🔹 Transcripción Original:</strong> ${transcripcionOriginal}</p>
+                                        <p><strong>✅ Mensaje Corregido:</strong> ${mensajeCorregido}</p>
+                                        <p><strong>✍️ Mensaje Reformulado:</strong> ${mensajeReformulado}</p>
+                                        ${mensajeIngles ? `<p><strong>✍️ Mensaje en Inglés:</strong> ${mensajeIngles}</p>` : ""}
+                                    `;
+                                } catch (error) {
+                                    console.error("🚨 Error parseando respuesta de OpenAI:", error);
+                                    transcriptionText.innerText = "Error al procesar la respuesta.";
+                                }
                             } else {
-                                transcriptionText.innerText = "Error en la transcripción.";
+                                transcriptionText.innerText = "❌ Error en la transcripción.";
                             }
                         }
                     );
                 };
             };
-            
-            
-            
+
             mediaRecorder.start();
             startButton.disabled = true;
             stopButton.disabled = false;
         } catch (error) {
-            console.error("Error al acceder al micrófono:", error);
+            console.error("❌ Error al acceder al micrófono:", error);
             alert("Ocurrió un error al intentar acceder al micrófono.");
             transcriptionText.innerText = "Error al acceder al micrófono.";
         }
