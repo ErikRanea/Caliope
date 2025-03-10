@@ -38,3 +38,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     }
 });
+
+
+//Crear ventana 
+chrome.action.onClicked.addListener(() => {
+    chrome.windows.create({
+        url: "popup.html", // La interfaz de la extensión
+        type: "popup", // Ventana emergente
+        width: 400,
+        height: 500,
+        top: 100,
+        left: 100
+    });
+});
