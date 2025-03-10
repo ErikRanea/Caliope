@@ -66,38 +66,23 @@ document.addEventListener("DOMContentLoaded", () => {
                                 console.log("📩 Respuesta recibida:", response);
 
                                 try {
-                                    // 🛠️ Limpiar delimitadores de código y espacios
-                                    let rawText = response.respuesta.trim();
+                                    // Asegúrate de que estamos trabajando con un objeto adecuado
+                                    let opciones = response.respuesta;
 
-                                    // 🔥 Eliminar cualquier posible bloque ```json ```
-                                    rawText = rawText.replace(/```json|```/g, "").trim();
-
-                                    // 🔍 Verificamos si realmente es un JSON
-                                    if (!rawText.startsWith("[") || !rawText.endsWith("]")) {
-                                        throw new Error("⚠️ La respuesta de OpenAI no es un JSON válido.");
-                                    }
-
-                                    // 🔥 Convertir a un array JSON
-                                    let opciones = JSON.parse(rawText);
-
-                                    if (!Array.isArray(opciones) || opciones.length < 3) {
+                                    // Verifica que la respuesta tenga las claves necesarias
+                                    if (opciones && opciones.transcripcionOriginal && opciones.mensajeCorregido && opciones.mensajeReformulado) {
+                                        // Mostrar los resultados en el popup
+                                        transcriptionText.innerHTML = `
+                                            <p><strong>🔹 Transcripción Original:</strong> ${opciones.transcripcionOriginal}</p>
+                                            <p><strong>✅ Mensaje Corregido:</strong> ${opciones.mensajeCorregido}</p>
+                                            <p><strong>✍️ Mensaje Reformulado:</strong> ${opciones.mensajeReformulado}</p>
+                                            ${opciones.mensajeIngles ? `<p><strong>✍️ Mensaje en Inglés:</strong> ${opciones.mensajeIngles}</p>` : ""}
+                                        `;
+                                    } else {
                                         throw new Error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
                                     }
-
-                                    let transcripcionOriginal = opciones[0].replace(/^transcripcionOriginal:\s*/, "").trim();
-                                    let mensajeCorregido = opciones[1].replace(/^mensajeCorregido:\s*/, "").trim();
-                                    let mensajeReformulado = opciones[2].replace(/^mensajeReformulado:\s*/, "").trim();
-                                    let mensajeIngles = opciones.length > 3 ? opciones[3].replace(/^mensajeIngles:\s*/, "").trim() : "";
-
-                                    // 🖊️ Mostrar resultados en el popup sin los nombres de los campos
-                                    transcriptionText.innerHTML = `
-                                        <p><strong>🔹 Transcripción Original:</strong> ${transcripcionOriginal}</p>
-                                        <p><strong>✅ Mensaje Corregido:</strong> ${mensajeCorregido}</p>
-                                        <p><strong>✍️ Mensaje Reformulado:</strong> ${mensajeReformulado}</p>
-                                        ${mensajeIngles ? `<p><strong>✍️ Mensaje en Inglés:</strong> ${mensajeIngles}</p>` : ""}
-                                    `;
                                 } catch (error) {
-                                    console.error("🚨 Error parseando respuesta de OpenAI:", error);
+                                    console.error("🚨 Error procesando la respuesta de OpenAI:", error);
                                     transcriptionText.innerText = "Error al procesar la respuesta.";
                                 }
                             } else {

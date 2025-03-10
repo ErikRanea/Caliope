@@ -32,35 +32,53 @@ async function obtenerEmbeddings(texto) {
 }
 
 //Enviar a chatgpt
+// Enviar a ChatGPT
 async function enviarGPT(text, context) {
-    try {
-        const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${CONFIG.OPENAI_API_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "gpt-4o",
-                messages: [
-                    { role: "system", content: context },
-                    { role: "user", content: text }
-                ]
-            })
-        });
+    const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${CONFIG.OPENAI_API_KEY}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [
+                { role: "system", content: context },
+                { role: "user", content: text }
+            ],
+            temperature: 0.7
+        })
+    });
 
-        const data = await response.json();
-        if (data.choices && data.choices.length > 0) {
-            console.log("La respuesta de ChatGPT-4o es: "+JSON.stringify(data));
-            return data.choices[0].message.content;
-        } else {
-            throw new Error("Error a la hora de enviar el promp a ChatGPT-4o.");
+    const data = await response.json();
+
+    if (data.choices && data.choices.length > 0) {
+        // Aquí ajustamos para asegurarnos de que la respuesta esté en formato JSON
+        const message = data.choices[0].message.content;
+
+        // Asegúrate de que la respuesta esté estructurada como un objeto JSON, no un array
+        try {
+            // Limpiar delimitadores de código (```json```) de la respuesta
+            let cleanedMessage = message.replace(/```json|```/g, "").trim();
+
+            // Asegúrate de que la respuesta esté en formato JSON
+            const parsedResponse = JSON.parse(cleanedMessage);
+
+            // Verificar si la respuesta contiene las claves correctas
+            if (parsedResponse.transcripcionOriginal && parsedResponse.mensajeCorregido && parsedResponse.mensajeReformulado) {
+                return parsedResponse;
+            } else {
+                throw new Error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
+            }
+        } catch (error) {
+            console.error("Error al parsear la respuesta de OpenAI: ", error);
+            return null;
         }
-    } catch (error) {
-        console.error("🚨 Error a la hora de enviar el promp a ChatGPT-4o:", error);
-        return "Error a la hora de enviar el promp a ChatGPT-4o. Da este error: ."+error.message;
+    } else {
+        throw new Error("Error en la respuesta de OpenAI.");
     }
 }
+
 
 //Calcular similitud de coseno
 function cosineSimilarity(vec1, vec2) {
@@ -112,15 +130,17 @@ async function respuestaYRecomendaciones(transcripcion, vectorBase) {
     - La **primera respuesta** debe ser la transcripción original sin cambios.
     - La **segunda respuesta** debe corregir cualquier dato erróneo basándose en los temas relevantes manteniendo la estructura del mensaje original.
     - La **tercera respuesta** debe reformular el mensaje con un tono profesional y corporativo.
-    - La **cuarta respuesta** debe reformular la segunda respuesta pero en inglés
+    - La **cuarta respuesta** debe reformular la segunda respuesta pero en inglés.
 
      **Formato de salida esperado**:
-    transcripcionOriginal: (Aquí va el mensaje sin modificaciones)
-    mensajeCorregido: (Aquí va la versión corregida con datos precisos)
-    mensajeReformulado: (Aquí va la reformulación profesional)
-    mensajeIngles: (Aquí va la reformulación en Inglés)
+    {
+        "transcripcionOriginal": "(Aquí va el mensaje sin modificaciones)",
+        "mensajeCorregido": "(Aquí va la versión corregida con datos precisos)",
+        "mensajeReformulado": "(Aquí va la reformulación profesional)",
+        "mensajeIngles": "(Aquí va la reformulación en Inglés)"
+    }
 
-    Devuelve **únicamente** estos tres mensajes en formato de lista.
+    Devuelve **únicamente** estos valores como un objeto JSON.
     `;
 
     return await enviarGPT(transcripcion, prompt);
