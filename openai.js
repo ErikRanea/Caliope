@@ -6,7 +6,7 @@ async function reformulateText(text, context) {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            model: "gpt-4",
+            model: "gpt-4o",
             messages: [
                 { role: "system", content: context },
                 { role: "user", content: text }
