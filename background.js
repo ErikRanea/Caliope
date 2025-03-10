@@ -2,24 +2,39 @@
 importScripts("config.js");
 importScripts("whisper.js");
 importScripts("openai.js");
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log("📩 Mensaje recibido en background.js:", request.action);
+
     if (request.action === "transcribeAudio") {
         if (request.audioData) {
-            const audioBlob = new Blob([request.audioData], { type: "audio/webm" }); // Convertir de nuevo en Blob
-            transcribeAudio(audioBlob)
-                .then(transcription => sendResponse({ transcription }))
-                .catch(error => sendResponse({ error: error.message }));
-            return true;
-        } else {
-            sendResponse({ error: "No se recibió audio válido."});
-        }
-    }
+            console.log("🔍 Convirtiendo Base64 en Blob...");
 
-    if (request.action === "reformulateText") {
-        reformulateText(request.transcription, request.context)
-            .then(response => sendResponse({ reformulatedText: response }))
-            .catch(error => sendResponse({ error: error.message }));
-        return true;
+            // Convertimos base64 a Blob
+            const byteCharacters = atob(request.audioData.split(',')[1]);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const audioBlob = new Blob([byteArray], { type: "audio/webm" });
+
+            console.log("📂 Archivo de audio reconstruido:", audioBlob);
+            console.log("📏 Tamaño reconstruido:", audioBlob.size, "bytes");
+
+            transcribeAudio(audioBlob)
+                .then(transcription => {
+                    console.log("✅ Transcripción recibida:", transcription);
+                    sendResponse({ transcription });
+                })
+                .catch(error => {
+                    console.error("🚨 Error en la transcripción:", error);
+                    sendResponse({ error: error.message });
+                });
+
+            return true; // Permite respuestas asíncronas
+        } else {
+            console.error("❌ No se recibió audio en la solicitud.");
+            sendResponse({ error: "No se recibió audio válido." });
+        }
     }
 });

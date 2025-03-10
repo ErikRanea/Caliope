@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             console.log("Iniciando grabación de audio...");
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
             audioChunks = [];
 
             mediaRecorder.ondataavailable = event => {
@@ -43,18 +43,21 @@ document.addEventListener("DOMContentLoaded", () => {
             mediaRecorder.onstop = async () => {
                 console.log("Deteniendo grabación de audio...");
                 const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+            
                 console.log("Blob de audio generado:", audioBlob);
                 console.log("Tipo de Blob:", audioBlob.type);
                 console.log("Tamaño del Blob:", audioBlob.size, "bytes");
-
+            
+                // 🔥 Enviar directamente el Blob sin convertirlo en ArrayBuffer
                 const reader = new FileReader();
-                reader.readAsArrayBuffer(audioBlob);
+                reader.readAsDataURL(audioBlob); // Convertimos el audio en base64 para evitar pérdida de datos
+            
                 reader.onloadend = () => {
                     console.log("Enviando audio al background.js...");
                     chrome.runtime.sendMessage(
                         {
                             action: "transcribeAudio",
-                            audioData: reader.result 
+                            audioData: reader.result // Ahora enviamos una URL en base64
                         },
                         response => {
                             if (chrome.runtime.lastError) {
@@ -62,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 transcriptionText.innerText = "Error en la comunicación con la API.";
                                 return;
                             }
-                            
+            
                             if (response && response.transcription) {
                                 transcriptionText.innerText = response.transcription;
                             } else {
@@ -72,6 +75,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     );
                 };
             };
+            
+            
             
             mediaRecorder.start();
             startButton.disabled = true;
