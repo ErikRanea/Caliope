@@ -1,23 +1,25 @@
-importScripts("config.js","whisper.js","openai.js"); // Importar el archivo con la API Key
+// background.js
+importScripts("config.js");
+importScripts("whisper.js");
+importScripts("openai.js");
 
-
-/*
-En la siguiente secuencia, recogemos la peticiones de acción de los botones
-de transcribir y reformular el texto para 
-*/ 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "transcribeAudio") {
-        transcribeAudio(request.audioData)
-            .then(transcription => sendResponse({ transcription }))
-            .catch(error => sendResponse({ error: error.message }));
-        return true;
+        if (request.audioData) {
+            const audioBlob = new Blob([request.audioData], { type: "audio/webm" }); // Convertir de nuevo en Blob
+            transcribeAudio(audioBlob)
+                .then(transcription => sendResponse({ transcription }))
+                .catch(error => sendResponse({ error: error.message }));
+            return true;
+        } else {
+            sendResponse({ error: "No se recibió audio válido."});
+        }
     }
 
     if (request.action === "reformulateText") {
-        reformulateText(request.transcription)
+        reformulateText(request.transcription, request.context)
             .then(response => sendResponse({ reformulatedText: response }))
             .catch(error => sendResponse({ error: error.message }));
         return true;
     }
 });
-
