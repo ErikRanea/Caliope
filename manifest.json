@@ -1,13 +1,10 @@
-
 {
   "manifest_version": 3,
-  "name": "Caliope IA asistente",
+  "name": "Caliope IA",
   "version": "1.0",
-  "description": "Extensión de Chrome que permite dictar respuestas en WhatsApp Web, transcribirlas y reformularlas con un tono corporativo.",
-  "permissions": ["activeTab", "storage", "scripting","windows"],
-  "host_permissions": [
-  "https://web.whatsapp.com/*"
-  ],
+  "description": "Extensión de Chrome para transcripción y reformulación de mensajes en WhatsApp Web.",
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -17,16 +14,22 @@
       "js": ["content.js"]
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["vue-app.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "action": {
     "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
+      "16": "public/icons/icon16.png",
+      "48": "public/icons/icon48.png",
+      "128": "public/icons/icon128.png"
     }
   },
   "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "public/icons/icon16.png",
+    "48": "public/icons/icon48.png",
+    "128": "public/icons/icon128.png"
   }
 }

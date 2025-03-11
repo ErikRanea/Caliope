@@ -17,14 +17,6 @@
     // Crear el div donde se montará Vue
     const vueMount = document.createElement("div");
     vueMount.id = "caliope-vue";
-    // Inyectar Vue directamente desde la extensión
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = chrome.runtime.getURL("vue-app.js");
-    script.onload = () => {
-        console.log("✅ Vue-app.js cargado correctamente.");
-    };
-    vueMount.appendChild(script);
     shadowRoot.appendChild(vueMount);
 
     // Agregar estilos básicos para asegurar visibilidad
@@ -34,7 +26,7 @@
             position: fixed !important;
             bottom: 20px !important;
             right: 20px !important;
-            background: rgba(255, 36, 36, 0.95) !important;
+            background: rgba(30, 30, 30, 0.95) !important;
             color: white !important;
             padding: 20px !important;
             border-radius: 12px !important;
@@ -50,5 +42,12 @@
 
     console.log("✅ Shadow DOM creado con éxito.");
 
-    
+    // Inyectar Vue directamente desde la extensión
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = chrome.runtime.getURL("vue-app.js");
+    script.onload = () => {
+        console.log("✅ Vue-app.js cargado correctamente.");
+    };
+    shadowRoot.appendChild(script);
 })();

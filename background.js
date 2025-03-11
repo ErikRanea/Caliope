@@ -125,14 +125,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-//Crear ventana emergente
-chrome.action.onClicked.addListener(() => {
-    chrome.windows.create({
-        url: "popup.html",
-        type: "popup",
-        width: 400,
-        height: 500,
-        top: 100,
-        left: 100
-    });
-});
