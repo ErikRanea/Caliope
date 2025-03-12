@@ -1,5 +1,9 @@
 // content.js
 
+let caliopeButton; // Declarar caliopeButton fuera de injectUI para que persista
+let shadowHost; // Declarar shadowHost fuera de injectUI para que persista
+let observer; // Declarar observer fuera de injectUI para poder desconectarlo
+
 function injectUI() {
     // 1. Intentar encontrar el contenedor principal de la conversación
     let whatsappContainer = document.querySelector('._ak1r');
@@ -10,27 +14,92 @@ function injectUI() {
         return;
     }
 
-    // 2. Crear el Shadow Host
-    const shadowHost = document.createElement('div');
-    shadowHost.id = 'caliope-shadow-host';
-    shadowHost.style.position = 'relative';
-    shadowHost.style.zIndex = '1000';
+    // --- Desconectar el observer si ya existe ---
+    if (observer) {
+        observer.disconnect();
+    }
 
-    // 3. Crear el Shadow DOM
+    // --- Eliminar el botón y el Shadow Host si ya existen ---
+    if (caliopeButton) {
+        caliopeButton.remove();
+    }
+    if (shadowHost) {
+        shadowHost.remove();
+    }
+
+    // 2. Crear el botón que activará el "popup"
+    caliopeButton = document.createElement('button');
+    caliopeButton.innerText = "Caliope IA";
+    caliopeButton.id = 'caliope-button';
+    caliopeButton.style.marginLeft = '10px'; // Espacio entre el botón y el elemento _ak1r
+    caliopeButton.style.backgroundColor = '#00a884';
+    caliopeButton.style.color = 'white';
+    caliopeButton.style.border = 'none';
+    caliopeButton.style.borderRadius = '5px';
+    caliopeButton.style.padding = '5px 10px';
+    caliopeButton.style.cursor = 'pointer';
+
+
+    // 3. Crear el Shadow Host (inicialmente oculto)
+    shadowHost = document.createElement('div');
+    shadowHost.id = 'caliope-shadow-host';
+    shadowHost.style.position = 'absolute'; // Cambiado a absolute
+    shadowHost.style.bottom = '20px'; // Posición inicial
+    shadowHost.style.right = '20px';
+    shadowHost.style.zIndex = '1000';
+    shadowHost.style.display = 'none'; // Inicialmente oculto
+
+
+    // 4. Crear el Shadow DOM
     const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
 
-    // 4. Crear un contenedor para nuestra interfaz DENTRO del Shadow DOM
+    // 5. Crear un contenedor para nuestra interfaz DENTRO del Shadow DOM
     const caliopeContainer = document.createElement('div');
     caliopeContainer.id = 'caliope-container';
     shadowRoot.appendChild(caliopeContainer);
 
-    // 5. Añadir el Shadow Host a WhatsApp Web
-    whatsappContainer.appendChild(shadowHost);
+    // 6. Añadir el Shadow Host a WhatsApp Web (pero NO mostrarlo todavía)
+    document.body.appendChild(shadowHost); // Añadir al body para posicionamiento absoluto
 
-    console.log("✅ Shadow Host y Shadow DOM de Caliope IA inyectados en WhatsApp Web.");
+    // 7. Añadir el botón al lado del elemento _ak1r
+    whatsappContainer.parentNode.insertBefore(caliopeButton, whatsappContainer.nextSibling);
+
+
+    console.log("✅ Botón de Caliope IA inyectado en WhatsApp Web.");
+    console.log("✅ Shadow Host y Shadow DOM de Caliope IA inyectados en WhatsApp Web (oculto inicialmente).");
 
     // Llamar a la función para crear el contenido de la interfaz DENTRO del Shadow DOM
     createUIContent(shadowRoot);
+
+
+     // --- Event Listener para el botón ---
+     caliopeButton.addEventListener('click', () => {
+        // Alternar la visibilidad del Shadow Host
+        if (shadowHost.style.display === 'none') {
+            shadowHost.style.display = 'block';
+        } else {
+            shadowHost.style.display = 'none';
+        }
+    });
+
+     // --- Configurar y iniciar el MutationObserver ---
+     observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            // Si se añade o se elimina un nodo hijo, o si cambian los atributos, reinjectar la interfaz
+            if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                console.log("🔄 Detectado cambio en el DOM. Reinyectando la interfaz...");
+                injectUI();
+            }
+        });
+    });
+
+    // Comenzar a observar el contenedor principal
+    observer.observe(whatsappContainer.parentNode, {
+        childList: true, // Observar si se añaden o se eliminan nodos hijos
+        subtree: true, // Observar todos los descendientes del nodo
+        attributes: true, // Observar si cambian los atributos
+        attributeFilter: ['class', 'data-testid'] // Especificar qué atributos observar (opcional, pero puede mejorar el rendimiento)
+    });
 }
 
 // Función para crear el contenido de la interfaz DENTRO del Shadow DOM
@@ -39,10 +108,6 @@ function createUIContent(shadowRoot) {
     const style = document.createElement('style');
     style.textContent = `
         #caliope-container {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
             background-color: #f0f0f0; /* Un fondo claro para la legibilidad */
             padding: 10px;
             border-radius: 5px;
@@ -148,6 +213,8 @@ async function startRecording(shadowRoot) {
 
             reader.onloadend = () => {
                 console.log("🚀 Enviando audio al background.js...");
+                console.log("🚀 Enviando audio al background.js2...");
+
                 chrome.runtime.sendMessage(
                     {
                         action: "transcribeAudio",
