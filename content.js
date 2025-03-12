@@ -25,13 +25,12 @@ function injectUI() {
     // 2. Crear el botón que activará la grabación
     caliopeButton = document.createElement('button');
     caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>'; // Usar el icono de Bootstrap
-    caliopeButton.style.fontSize = '16px'; // Aumentar el tamaño de la fuente
+    caliopeButton.style.fontSize = '30px'; // Aumentar el tamaño de la fuente
     caliopeButton.id = 'caliope-button';
     caliopeButton.style.marginLeft = '10px';
-    caliopeButton.style.color = '#00a884';
-    caliopeButton.style.backgroundColor = 'transparent'; // Verde
-    caliopeButton.style.color = 'white';
-    caliopeButton.style.border = '1px #00a884 solid';
+    caliopeButton.style.color = '#8696a0';
+    caliopeButton.style.backgroundColor = 'transparent';
+    caliopeButton.style.border = 'none';
     caliopeButton.style.borderRadius = '5px';
     caliopeButton.style.padding = '5px 10px';
     caliopeButton.style.cursor = 'pointer';
@@ -63,12 +62,7 @@ function createRecordingControls(parent, nextSibling) {
     // --- Botón de Papelera ---
     const trashButton = document.createElement('button');
     trashButton.innerHTML = '<i class="bi bi-trash-fill"></i>';
-    trashButton.style.backgroundColor = '#dc3545'; // Rojo
-    trashButton.style.color = 'white';
-    trashButton.style.border = 'none';
-    trashButton.style.borderRadius = '5px';
-    trashButton.style.padding = '5px 10px';
-    trashButton.style.cursor = 'pointer';
+    applyButtonStyle(trashButton);
     trashButton.addEventListener('click', () => {
         // Detener la grabación y limpiar
         stopRecording(true);
@@ -85,47 +79,38 @@ function createRecordingControls(parent, nextSibling) {
     audioWaves.style.height = '20px';
     audioWaves.style.display = 'flex'; // Usar flexbox para las ondas
     audioWaves.style.alignItems = 'center';
-    audioWaves.style.justifyContent = 'space-around'; // Espacio entre las ondas
+    audioWaves.style.justifyContent = 'center'; // Espacio entre las ondas
 
-    // Crear las ondas
+    const waves = []; // Almacenar las ondas
     for (let i = 0; i < 5; i++) { // Crear 5 ondas
         const wave = document.createElement('div');
         wave.classList.add('caliope-wave');
         wave.style.width = '5px';
+        wave.style.margin = '0 2px'; // Espacio entre las ondas
         wave.style.backgroundColor = '#00a884'; // Verde
-        wave.style.animation = `caliope-wave-animation ${Math.random() * 1 + 0.5}s infinite alternate`; // Animación aleatoria
         audioWaves.appendChild(wave);
+        waves.push(wave); // Guardar la referencia a la onda
     }
 
     // --- Botón de Pausa/Reanudar ---
     const pauseButton = document.createElement('button');
-    pauseButton.innerHTML = '<i class="bi bi-pause-fill"></i>';
-    pauseButton.style.backgroundColor = '#ffc107'; // Amarillo
-    pauseButton.style.color = 'black';
-    pauseButton.style.border = 'none';
-    pauseButton.style.borderRadius = '5px';
-    pauseButton.style.padding = '5px 10px';
-    pauseButton.style.cursor = 'pointer';
+    pauseButton.innerHTML = '<i class="bi bi-pause"></i>';
+    applyButtonStyle(pauseButton);
     pauseButton.addEventListener('click', () => {
         if (isPaused) {
             mediaRecorder.resume();
-            pauseButton.innerHTML = '<i class="bi bi-pause-fill"></i>';
+            pauseButton.innerHTML = '<i class="bi bi-pause"></i>';
         } else {
             mediaRecorder.pause();
-            pauseButton.innerHTML = '<i class="bi bi-play-fill"></i>';
+            pauseButton.innerHTML = '<i class="bi bi-play"></i>';
         }
         isPaused = !isPaused;
     });
 
      // --- Botón de Detener ---
      const stopButton = document.createElement('button');
-     stopButton.innerHTML = '<i class="bi bi-stop-fill"></i> Detener';
-     stopButton.style.backgroundColor = '#00a884'; // Verde
-     stopButton.style.color = 'white';
-     stopButton.style.border = 'none';
-     stopButton.style.borderRadius = '5px';
-     stopButton.style.padding = '5px 10px';
-     stopButton.style.cursor = 'pointer';
+     stopButton.innerHTML = '<i class="bi bi-stop-fill"></i>';
+     applyButtonStyle(stopButton);
      stopButton.addEventListener('click', () => {
          stopRecording(false, () => { // Detener la grabación y luego insertar el texto
              controlsContainer.remove(); // Eliminar los controles
@@ -143,11 +128,11 @@ function createRecordingControls(parent, nextSibling) {
     parent.insertBefore(controlsContainer, nextSibling);
 
     // --- Iniciar la grabación ---
-    startRecording();
+    startRecording(waves, audioWaves); // Pasa las ondas y el contenedor a la función startRecording
 }
 
 // --- Funciones de Grabación ---
-async function startRecording() {
+async function startRecording(waves, audioWaves) {
     const permissionGranted = await requestMicrophonePermission();
     if (!permissionGranted) return;
 
@@ -157,6 +142,44 @@ async function startRecording() {
         mediaRecorder = new MediaRecorder(streamMicrofono, { mimeType: "audio/webm;codecs=opus" });
         audioChunks = [];
 
+        // --- Crear el contexto de audio y el analizador ---
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(streamMicrofono);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+
+        // --- Función para actualizar las ondas de audio ---
+        function updateAudioWaves() {
+            analyser.getByteFrequencyData(dataArray);
+
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / bufferLength;
+
+             // Normalizar el valor promedio a un rango de 0 a 1
+             const normalizedValue = average / 128;
+           
+             // Establecer una altura máxima para las ondas
+             const maxHeight = 20;
+
+            for (let i = 0; i < waves.length; i++) {
+                const wave = waves[i];
+                 // Establecer la altura de la onda basada en el valor normalizado y la altura máxima
+                wave.style.height = `${normalizedValue * maxHeight}px`;
+            }
+
+            requestAnimationFrame(updateAudioWaves);
+        }
+
+        updateAudioWaves(); // Iniciar la animación
+
         mediaRecorder.ondataavailable = event => {
             if (event.data.size > 0) {
                 audioChunks.push(event.data);
@@ -164,6 +187,11 @@ async function startRecording() {
         };
 
         mediaRecorder.onstop = async () => {
+            //Detener el stream de audio
+            source.disconnect(analyser);
+            analyser.disconnect(audioContext);
+            audioContext.close();
+
             console.log("⏹️ Deteniendo grabación de audio...");
             const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
             console.log("📂 Blob de audio generado:", audioBlob);
@@ -193,7 +221,7 @@ async function startRecording() {
 
                                 if (opciones && opciones.transcripcionOriginal && opciones.mensajeCorregido && opciones.mensajeReformulado) {
                                     // Insertar las respuestas en el chat de WhatsApp
-                                    insertText(opciones.transcripcionOriginal); // Insertar la transcripción original
+                                    insertText(opciones.mensajeReformulado); // Insertar la transcripción original
                                     console.log("🔹 Transcripción Original:", opciones.transcripcionOriginal);
                                     console.log("✅ Mensaje Corregido:", opciones.mensajeCorregido);
                                     console.log("✍️ Mensaje Reformulado:", opciones.mensajeReformulado);
@@ -234,6 +262,8 @@ function stopRecording(liberarMicrofono = false, callback = () => {}) {
             console.log("🎤 Micrófono liberado.");
         }
 
+        audioChunks = []; // Resetear los chunks de audio
+
         callback(); // Llamar al callback después de detener la grabación
     }
 }
@@ -272,6 +302,18 @@ function insertText(text) {
     }
 }
 
+function applyButtonStyle(button) {
+    button.style.fontSize = '30px'; // Aumentar el tamaño de la fuente
+    button.style.marginLeft = '10px';
+    button.style.color = '#8696a0';
+    button.style.backgroundColor = 'transparent';
+    button.style.border = 'none';
+    button.style.borderRadius = '5px';
+    button.style.padding = '5px 10px';
+    button.style.cursor = 'pointer';
+    button.style.fontFamily = 'Inter, sans-serif'; // Tipografía Inter
+}
+
 // Llamar a la función para inyectar la interfaz al cargar la página
 injectUI();
 
@@ -287,16 +329,7 @@ style.textContent = `
         height: 20px;
         background-color: #00a884; /* Verde */
         border-radius: 5px;
-        animation: caliope-wave-animation 1s infinite alternate;
-    }
-
-    @keyframes caliope-wave-animation {
-        0% {
-            height: 5px;
-        }
-        100% {
-            height: 20px;
-        }
+        
     }
 `;
 document.head.appendChild(style);
