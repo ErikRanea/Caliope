@@ -24,12 +24,14 @@ function injectUI() {
 
     // 2. Crear el botón que activará la grabación
     caliopeButton = document.createElement('button');
-    caliopeButton.innerHTML = '<i class="bi bi-mic-fill"></i> Caliope IA'; // Usar el icono de Bootstrap
+    caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>'; // Usar el icono de Bootstrap
+    caliopeButton.style.fontSize = '16px'; // Aumentar el tamaño de la fuente
     caliopeButton.id = 'caliope-button';
     caliopeButton.style.marginLeft = '10px';
-    caliopeButton.style.backgroundColor = '#00a884';
+    caliopeButton.style.color = '#00a884';
+    caliopeButton.style.backgroundColor = 'transparent'; // Verde
     caliopeButton.style.color = 'white';
-    caliopeButton.style.border = 'none';
+    caliopeButton.style.border = '1px #00a884 solid';
     caliopeButton.style.borderRadius = '5px';
     caliopeButton.style.padding = '5px 10px';
     caliopeButton.style.cursor = 'pointer';
@@ -251,7 +253,7 @@ async function requestMicrophonePermission() {
 
 function insertText(text) {
     // 1. Encontrar el textarea (el selector puede variar)
-    const textarea = document.querySelector("div[contenteditable='true']");
+    const textarea = document.querySelector("div[aria-label='Escribe un mensaje'][contenteditable='true']");
 
     
     if (textarea) {
