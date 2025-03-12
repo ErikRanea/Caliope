@@ -186,18 +186,15 @@ async function startRecording() {
                         }
 
                         if (response && response.transcription) {
-                            console.log("📩 Respuesta recibida:", response);
+                            console.log("📩 Respuesta recibida:", JSON.stringify(response));
 
                             try {
-                                let opciones = response.respuesta;
+                                
 
-                                if (opciones && opciones.transcripcionOriginal && opciones.mensajeCorregido && opciones.mensajeReformulado) {
+
+                                if (response && response.respuesta) {
                                     // Insertar las respuestas en el chat de WhatsApp
-                                    insertText(opciones.transcripcionOriginal); // Insertar la transcripción original
-                                    console.log("🔹 Transcripción Original:", opciones.transcripcionOriginal);
-                                    console.log("✅ Mensaje Corregido:", opciones.mensajeCorregido);
-                                    console.log("✍️ Mensaje Reformulado:", opciones.mensajeReformulado);
-                                    console.log("✍️ Mensaje en Inglés:", opciones.mensajeIngles);
+                                    insertText(response.respuesta); // Insertar la transcripción original
                                 } else {
                                     console.error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
                                 }
