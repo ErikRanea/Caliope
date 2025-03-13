@@ -90,7 +90,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     .then(async transcription => {
                         console.log("✅ Transcripción recibida:", transcription);
 
-                        const respuesta = await respuestaYRecomendaciones(transcription, vectorBase);
+                        const respuesta = await respuestaTonalizada(transcription);
 
                         sendResponse({ transcription, respuesta });
                     })

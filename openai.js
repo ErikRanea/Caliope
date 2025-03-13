@@ -32,52 +32,42 @@ async function obtenerEmbeddings(texto) {
 }
 
 //Enviar a chatgpt
-// Enviar a ChatGPT
 async function enviarGPT(text, context) {
-    const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${CONFIG.OPENAI_API_KEY}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [
-                { role: "system", content: context },
-                { role: "user", content: text }
-            ],
-            temperature: 0.7
-        })
-    });
+    try {
+        const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${CONFIG.OPENAI_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    { role: "system", content: context },
+                    { role: "user", content: text }
+                ],
+                temperature: 0.7
+            })
+        });
 
-    const data = await response.json();
-
-    if (data.choices && data.choices.length > 0) {
-        // Aquí ajustamos para asegurarnos de que la respuesta esté en formato JSON
-        const message = data.choices[0].message.content;
-
-        // Asegúrate de que la respuesta esté estructurada como un objeto JSON, no un array
-        try {
-            // Limpiar delimitadores de código (```json```) de la respuesta
-            let cleanedMessage = message.replace(/```json|```/g, "").trim();
-
-            // Asegúrate de que la respuesta esté en formato JSON
-            const parsedResponse = JSON.parse(cleanedMessage);
-
-            // Verificar si la respuesta contiene las claves correctas
-            if (parsedResponse.transcripcionOriginal && parsedResponse.mensajeCorregido && parsedResponse.mensajeReformulado) {
-                return parsedResponse;
-            } else {
-                throw new Error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
-            }
-        } catch (error) {
-            console.error("Error al parsear la respuesta de OpenAI: ", error);
-            return null;
+        if (!response.ok) {
+            throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
         }
-    } else {
-        throw new Error("Error en la respuesta de OpenAI.");
+
+        const data = await response.json();
+
+        if (data.choices && data.choices.length > 0) {
+            return data.choices[0].message.content; // Devolver solo el contenido del mensaje
+        } else {
+            throw new Error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
+        }
+    } catch (error) {
+        console.error("Error al procesar la respuesta de OpenAI: ", error);
+        return null;
     }
 }
+
+
 
 
 //Calcular similitud de coseno
@@ -141,6 +131,64 @@ async function respuestaYRecomendaciones(transcripcion, vectorBase) {
     }
 
     Devuelve **únicamente** estos valores como un objeto JSON.
+    `;
+
+    return await enviarGPT(transcripcion, prompt);
+}
+
+
+async function respuestaTonalizada(transcripcion) {
+    
+
+    const prompt = `
+    Mejora la redacción de esta transcripción:"${transcripcion}".
+
+    Teniendo en cuenta lo siguiente:
+
+    Mejorar la redacción de emails, mensajes de WhatsApp o notas a partir del contenido que yo te envíe o dicte.
+
+    ## Instrucciones específicas:
+
+    Al recibir un borrador, ofrece una versión mejorada cumpliendo estrictamente estos requisitos:
+
+    - **Claridad y naturalidad**: usa un lenguaje sencillo y natural, que no suene forzado. Además debe ser humano y fluido.
+    - **Tono**: directo y bien estructurado, con estilo business casual. Evita formalismos excesivos, tecnicismos o frases complicadas.
+    - **Evita** palabras sofisticadas o términos propios del lenguaje académico o jurídico.
+    - **No repitas** palabras o expresiones.
+    - **Reorganiza** el contenido siempre que mejore la estructura y fluidez.
+    - **Sin introducciones ni despedidas**; entrega únicamente el mensaje mejorado solicitado.
+    - **Nunca uses rayas largas (— o em dashes)**. Sustitúyelas por comas, paréntesis o reorganización adecuada. 
+    - **Guiones cortos (-)** únicamente en palabras compuestas o casos estrictamente necesarios.
+
+    ## Idioma de respuesta:
+
+    - Si el borrador está en **español**, responde en **español de España**, cumpliendo todas las condiciones anteriores.
+    - Si el borrador está en **inglés**, responde en **inglés británico**, con expresiones y ortografía naturales, adaptadas a un entorno laboral en Malta.
+    - Si después de una respuesta en español escribo **"i", "I" o "ingles"**, traduce tu respuesta anterior al inglés británico, asegurando que sea natural, precisa y adaptada a Malta.
+
+    ### **Instrucciones específicas que debo seguir SIEMPRE:**
+
+    1. **Verifica siempre que tu respuesta transmita exactamente el mismo significado del borrador original.**
+
+    2. **No usar guiones largos (—) bajo ninguna circunstancia.**  
+    - En su lugar, usar comas, puntos o reformular la frase para mantener la fluidez.  
+    - **Si en algún momento me equivoco y uso un guion largo, debo corregirlo de inmediato sin excusas.**  
+
+    3. **Evitar traducciones literales.**  
+    - Siempre priorizar un estilo natural en castellano e inglés.
+    - Aunque sea gramaticalmente correcto, no suene forzado. Debe sonar natural y humano.
+
+    4. **No utilizar letras mayúsculas innecesarias ni negritas si no se solicita.**  
+
+    5. **Utilizar el formato de inglés más alineado con el español.**  
+    - Usar el símbolo del euro (€) detrás de la cifra.  
+    - Escribir las fechas con el año al final y mantener los ceros para evitar errores.  
+
+    6. **Explicar de forma detallada cuando la información sea técnica.**  
+
+    7. **Si Jorge me avisa de un error recurrente, debo identificarlo y corregirlo de forma permanente.**  
+
+    Si haces mal este trabajo me van a despedir y mi mujer me va a abandonar, porfavor hazlo perfecto.
     `;
 
     return await enviarGPT(transcripcion, prompt);
