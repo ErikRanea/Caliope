@@ -8,6 +8,7 @@ let streamMicrofono;
 let isRecording = false;
 let isPaused = false;
 let isDeleted = false;
+let setBoton = false;
 
 // Function to apply button style
 function applyButtonStyle(button) {
@@ -22,9 +23,7 @@ function applyButtonStyle(button) {
     button.style.fontFamily = 'Inter, sans-serif';
 }
 
-function injectUI() {
-    let whatsappContainer = document.querySelector('._ak1r');
-
+function injectUI(whatsappContainer) {
     if (!whatsappContainer) {
         console.warn("⚠️ No se encontró el contenedor principal de WhatsApp.");
         return;
@@ -54,6 +53,8 @@ function injectUI() {
         // Crear los controles de grabación
         createRecordingControls();
     });
+
+    setBoton = true;
 }
 
 function createRecordingControls() {
@@ -369,10 +370,11 @@ document.head.appendChild(style);
 function observeAndInject() {
     setInterval(() => {
         let whatsappContainer = document.querySelector('._ak1r');
-        if (whatsappContainer) {
-            injectUI();
+        let botonCaliope = document.getElementById('caliope-button');
+        if (whatsappContainer && !botonCaliope) {
+            injectUI(whatsappContainer);
         }
-    }, 2000); // Check every 2 seconds
+    }, 100); // Check every 2 seconds
 }
 
 // Call the function to start observing and inject the UI
