@@ -7,13 +7,24 @@ let streamMicrofono;
 let isRecording = false;
 let isPaused = false;
 
+// Function to apply button style
+function applyButtonStyle(button) {
+    button.style.fontSize = '30px';
+    button.style.marginLeft = '10px';
+    button.style.color = '#8696a0';
+    button.style.backgroundColor = 'transparent';
+    button.style.border = 'none';
+    button.style.borderRadius = '5px';
+    button.style.padding = '5px 10px';
+    button.style.cursor = 'pointer';
+    button.style.fontFamily = 'Inter, sans-serif';
+}
+
 function injectUI() {
-    // 1. Intentar encontrar el contenedor principal de la conversación
     let whatsappContainer = document.querySelector('._ak1r');
 
     if (!whatsappContainer) {
-        console.warn("⚠️ No se encontró el contenedor principal de WhatsApp. Reintentando...");
-        setTimeout(injectUI, 1000);
+        console.warn("⚠️ No se encontró el contenedor principal de WhatsApp.");
         return;
     }
 
@@ -25,16 +36,8 @@ function injectUI() {
     // 2. Crear el botón que activará la grabación
     caliopeButton = document.createElement('button');
     caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>'; // Usar el icono de Bootstrap
-    caliopeButton.style.fontSize = '30px'; // Aumentar el tamaño de la fuente
+    applyButtonStyle(caliopeButton); // Apply style here
     caliopeButton.id = 'caliope-button';
-    caliopeButton.style.marginLeft = '10px';
-    caliopeButton.style.color = '#8696a0';
-    caliopeButton.style.backgroundColor = 'transparent';
-    caliopeButton.style.border = 'none';
-    caliopeButton.style.borderRadius = '5px';
-    caliopeButton.style.padding = '5px 10px';
-    caliopeButton.style.cursor = 'pointer';
-    caliopeButton.style.fontFamily = 'Inter, sans-serif'; // Tipografía Inter
 
     // 3. Añadir el botón al lado del elemento _ak1r
     whatsappContainer.parentNode.insertBefore(caliopeButton, whatsappContainer.nextSibling);
@@ -47,11 +50,18 @@ function injectUI() {
         caliopeButton.style.display = 'none';
 
         // Crear los controles de grabación
-        createRecordingControls(whatsappContainer.parentNode, whatsappContainer.nextSibling);
+        createRecordingControls();
     });
 }
 
-function createRecordingControls(parent, nextSibling) {
+function createRecordingControls() {
+     // 1. Intentar encontrar el contenedor principal de la conversación
+     let whatsappContainer = document.querySelector('._ak1r');
+
+     if (!whatsappContainer) {
+         console.warn("⚠️ No se encontró el contenedor principal de WhatsApp para los controles. Reintentando...");
+         return;
+     }
     // --- Crear el contenedor para los controles ---
     const controlsContainer = document.createElement('div');
     controlsContainer.id = 'caliope-controls-container';
@@ -124,8 +134,16 @@ function createRecordingControls(parent, nextSibling) {
     controlsContainer.appendChild(pauseButton);
     controlsContainer.appendChild(stopButton); // Añadir el botón de detener
 
+    // 1. Intentar encontrar el contenedor principal de la conversación
+    let whatsappContainerToControl = document.querySelector('._ak1r');
+
+        if (!whatsappContainerToControl) {
+            console.warn("⚠️ No se encontró el contenedor principal de WhatsApp para los controles. Reintentando...");
+            return;
+        }
+
     // --- Insertar el contenedor de controles en el DOM ---
-    parent.insertBefore(controlsContainer, nextSibling);
+    whatsappContainerToControl.parentNode.insertBefore(controlsContainer, whatsappContainerToControl.nextSibling);
 
     // --- Iniciar la grabación ---
     startRecording(waves, audioWaves); // Pasa las ondas y el contenedor a la función startRecording
@@ -213,7 +231,7 @@ async function startRecording(waves, audioWaves) {
                             return;
                         }
 
-                        if (response && response.transcription) {
+                        if (response && response.respuesta) {
                             console.log("📩 Respuesta recibida:", JSON.stringify(response));
 
                             try {
@@ -299,21 +317,6 @@ function insertText(text) {
     }
 }
 
-function applyButtonStyle(button) {
-    button.style.fontSize = '30px'; // Aumentar el tamaño de la fuente
-    button.style.marginLeft = '10px';
-    button.style.color = '#8696a0';
-    button.style.backgroundColor = 'transparent';
-    button.style.border = 'none';
-    button.style.borderRadius = '5px';
-    button.style.padding = '5px 10px';
-    button.style.cursor = 'pointer';
-    button.style.fontFamily = 'Inter, sans-serif'; // Tipografía Inter
-}
-
-// Llamar a la función para inyectar la interfaz al cargar la página
-injectUI();
-
 // --- Inyectar los estilos CSS ---
 const style = document.createElement('style');
 style.textContent = `
@@ -330,3 +333,16 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Function to observe and reinject UI
+function observeAndInject() {
+    setInterval(() => {
+        let whatsappContainer = document.querySelector('._ak1r');
+        if (whatsappContainer) {
+            injectUI();
+        }
+    }, 2000); // Check every 2 seconds
+}
+
+// Call the function to start observing and inject the UI
+observeAndInject();
