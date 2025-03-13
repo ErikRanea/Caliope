@@ -3,9 +3,12 @@
 let caliopeButton;
 let mediaRecorder;
 let audioChunks = [];
+let audioContext;
 let streamMicrofono;
 let isRecording = false;
 let isPaused = false;
+let isDeleted = false;
+let setBoton = false;
 
 // Function to apply button style
 function applyButtonStyle(button) {
@@ -20,9 +23,7 @@ function applyButtonStyle(button) {
     button.style.fontFamily = 'Inter, sans-serif';
 }
 
-function injectUI() {
-    let whatsappContainer = document.querySelector('._ak1r');
-
+function injectUI(whatsappContainer) {
     if (!whatsappContainer) {
         console.warn("⚠️ No se encontró el contenedor principal de WhatsApp.");
         return;
@@ -52,6 +53,8 @@ function injectUI() {
         // Crear los controles de grabación
         createRecordingControls();
     });
+
+    setBoton = true;
 }
 
 function createRecordingControls() {
@@ -74,6 +77,8 @@ function createRecordingControls() {
     trashButton.innerHTML = '<i class="bi bi-trash-fill"></i>';
     applyButtonStyle(trashButton);
     trashButton.addEventListener('click', () => {
+        console.log("El botón de basura se ha seleccionado");
+        isDeleted = true;
         // Detener la grabación y limpiar
         stopRecording(true);
         // Eliminar los controles de grabación
@@ -110,11 +115,16 @@ function createRecordingControls() {
     pauseButton.innerHTML = '<i class="bi bi-pause"></i>';
     applyButtonStyle(pauseButton);
     pauseButton.addEventListener('click', () => {
+        console.log("Se ha seleccionado el botón de pausa");
         if (isPaused) {
+            console.log("Reinciando grabación");
             mediaRecorder.resume();
+            console.log("Se ha reiniciado el grabado");
             pauseButton.innerHTML = '<i class="bi bi-pause"></i>';
         } else {
+            console.log("Deteniendo grabación");
             mediaRecorder.pause();
+            console.log("Se ha detenido la grabación");
             pauseButton.innerHTML = '<i class="bi bi-play"></i>';
         }
         isPaused = !isPaused;
@@ -126,8 +136,10 @@ function createRecordingControls() {
      applyButtonStyle(stopButton);
      stopButton.addEventListener('click', () => {
          stopRecording(false, () => { // Detener la grabación y luego insertar el texto
-             controlsContainer.remove(); // Eliminar los controles
-             caliopeButton.style.display = 'inline-block'; // Mostrar el botón de Caliope IA
+            isDeleted = false;
+            console.log("El valor de isDeleted es "+isDeleted);
+            controlsContainer.remove(); // Eliminar los controles
+            caliopeButton.style.display = 'inline-block'; // Mostrar el botón de Caliope IA
          });
      });
 
@@ -209,59 +221,63 @@ async function startRecording(waves, audioWaves) {
 
         mediaRecorder.onstop = async () => {
             //Detener el stream de audio
-            source.disconnect(analyser);
-            analyser.disconnect(audioContext);
-            audioContext.close();
 
-            console.log("⏹️ Deteniendo grabación de audio...");
-            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-            console.log("📂 Blob de audio generado:", audioBlob);
-
-            const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
-
-            reader.onloadend = () => {
-                console.log("🚀 Enviando audio al background.js...");
-                chrome.runtime.sendMessage(
-                    {
-                        action: "transcribeAudio",
-                        audioData: reader.result
-                    },
-                    response => {
-                        if (chrome.runtime.lastError) {
-                            console.error("❌ Error en el mensaje a background.js:", chrome.runtime.lastError.message);
-                            // TODO: Mostrar el error en la interfaz
-                            return;
-                        }
-
-                        if (response && response.respuesta) {
-                            console.log("📩 Respuesta recibida:", JSON.stringify(response));
-
-                            try {
-                                
-
-
-                                if (response && response.respuesta) {
-                                    // Insertar las respuestas en el chat de WhatsApp
-                                    insertText(response.respuesta); // Insertar la transcripción original
-                                } else {
-                                    console.error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
-                                }
-                            } catch (error) {
-                                console.error("🚨 Error procesando la respuesta de OpenAI:", error);
+            if(!isDeleted){
+                source.disconnect(analyser);
+                analyser.disconnect(audioContext);
+                audioContext.close();
+    
+                console.log("⏹️ Deteniendo grabación de audio...");
+    
+                const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+                console.log("📂 Blob de audio generado:", audioBlob);
+    
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+    
+                reader.onloadend = () => {
+                    console.log("🚀 Enviando audio al background.js...");
+                    chrome.runtime.sendMessage(
+                        {
+                            action: "transcribeAudio",
+                            audioData: reader.result
+                        },
+                        response => {
+                            if (chrome.runtime.lastError) {
+                                console.error("❌ Error en el mensaje a background.js:", chrome.runtime.lastError.message);
                                 // TODO: Mostrar el error en la interfaz
+                                return;
                             }
-                        } else {
-                            // TODO: Mostrar el error en la interfaz
-                            console.error("❌ Error en la transcripción.");
+    
+                            if (response && response.transcription) {
+                                console.log("📩 Respuesta recibida:", JSON.stringify(response));
+    
+                                try {
+                                    if (response && response.respuesta) {
+                                        // Insertar las respuestas en el chat de WhatsApp
+                                        insertText(response.respuesta); // Insertar la transcripción original
+                                        stopRecording(true);
+
+                                    } else {
+                                        console.error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
+                                    }
+                                } catch (error) {
+                                    console.error("🚨 Error procesando la respuesta de OpenAI:", error);
+                                    // TODO: Mostrar el error en la interfaz
+                                }
+                            } else {
+                                // TODO: Mostrar el error en la interfaz
+                                console.error("❌ Error en la transcripción.");
+                            }
                         }
-                    }
-                );
-            };
+                    );
+                };
+            }
         };
 
         mediaRecorder.start();
         isRecording = true;
+        console.log("Iniciando grabación del mediaRecorder")
     } catch (error) {
         console.error("❌ Error al acceder al micrófono:", error);
         alert("Ocurrió un error al intentar acceder al micrófono.");
@@ -270,21 +286,37 @@ async function startRecording(waves, audioWaves) {
 }
 
 function stopRecording(liberarMicrofono = false, callback = () => {}) {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-        isRecording = false;
+    console.log("Entrando en stopRecording");
 
-        if (liberarMicrofono && streamMicrofono) {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        console.log("🎤 Deteniendo grabación de audio...");
+        mediaRecorder.stop(); // Detener el recorder
+        isRecording = false; // Cambiar el estado de grabación a falso
+
+        // Asegurarse de que todas las conexiones de audio se detienen
+        if (streamMicrofono) {
+            // Si existe, desconectar todas las pistas del stream
             streamMicrofono.getTracks().forEach(track => track.stop()); // Detener todas las pistas de audio
-            streamMicrofono = null; // Limpiar la variable
+            streamMicrofono = null; // Limpiar la variable del stream
             console.log("🎤 Micrófono liberado.");
         }
 
-        audioChunks = []; // Resetear los chunks de audio
+        // Limpiar los chunks de audio
+        audioChunks = [];
+        
+        // Desconectar cualquier fuente de audio
+        if (audioContext) {
+            audioContext.close().then(() => {
+                console.log("🎤 Contexto de audio cerrado.");
+            }).catch((error) => {
+                console.error("❌ Error al cerrar el contexto de audio:", error);
+            });
+        }
 
         callback(); // Llamar al callback después de detener la grabación
     }
 }
+
 
 async function requestMicrophonePermission() {
     try {
@@ -341,11 +373,13 @@ document.head.appendChild(style);
 function observeAndInject() {
     setInterval(() => {
         let whatsappContainer = document.querySelector('._ak1r');
-        let trashIcon = document.querySelector('.bi.bi-trash-fill');
-        if (whatsappContainer && !trashIcon) {
-            injectUI();
+
+        let botonCaliope = document.getElementById('caliope-button');
+        if (whatsappContainer && !botonCaliope) {
+            injectUI(whatsappContainer);
+
         }
-    }, 2000); // Check every 2 seconds
+    }, 100); // Check every 2 seconds
 }
 
 // Call the function to start observing and inject the UI
