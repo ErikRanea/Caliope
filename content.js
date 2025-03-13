@@ -90,9 +90,12 @@ function createRecordingControls() {
     // --- Ondas de Audio ---
     const audioWaves = document.createElement('div');
     audioWaves.id = 'caliope-audio-waves';
-    audioWaves.style.width = '100px'; // Aumentar el ancho para más ondas
+    audioWaves.style.width = '80px'; // Aumentar el ancho para más ondas
     audioWaves.style.height = '20px';
+    audioWaves.style.backgroundColor = '#7c8c95'; // Gris claro
     audioWaves.style.display = 'flex'; // Usar flexbox para las ondas
+    audioWaves.style.borderRadius = '3px';
+    audioWaves.style.padding = '5px 0px'; // Espacio entre los controles
     audioWaves.style.alignItems = 'center';
     audioWaves.style.justifyContent = 'center'; // Espacio entre las ondas
 
@@ -102,7 +105,7 @@ function createRecordingControls() {
         wave.classList.add('caliope-wave');
         wave.style.width = '5px';
         wave.style.margin = '0 2px'; // Espacio entre las ondas
-        wave.style.backgroundColor = '#00a884'; // Verde
+        wave.style.backgroundColor = '#202c33'; 
         audioWaves.appendChild(wave);
         waves.push(wave); // Guardar la referencia a la onda
     }
@@ -370,9 +373,11 @@ document.head.appendChild(style);
 function observeAndInject() {
     setInterval(() => {
         let whatsappContainer = document.querySelector('._ak1r');
+
         let botonCaliope = document.getElementById('caliope-button');
         if (whatsappContainer && !botonCaliope) {
             injectUI(whatsappContainer);
+
         }
     }, 100); // Check every 2 seconds
 }
