@@ -339,29 +339,27 @@ function insertReformular(text){
 function injectReformular(text) {
     console.log("Inyectando el botón de reformular");
 
-    // Usamos MutationObserver para observar cambios en el DOM
-    const observer = new MutationObserver(() => {
-        const messageContainer = document.querySelector('div[aria-label="Escribe un mensaje"]');
-        
-        if (messageContainer) {
-            // Si el contenedor existe, detenemos el observador
-            observer.disconnect();
+    const messageContainer = document.querySelector('div.x78zum5.x98rzlu.xuk3077.xpvyfi4.x1iji9kk');
 
-            console.log("El contenedor del mensaje encontrado");
+    if (!messageContainer) {
+        console.warn("⚠️ No se encontró el contenedor del mensaje.");
+        return;
+    }
 
-            // Crear el botón que activará la reformulación
-            const reformularButton = document.createElement('button');
-            reformularButton.innerHTML = '<i class="bi bi-repeat"></i>'; // Usar el icono de Bootstrap
-            applyButtonStyle(reformularButton); // Apply style here
-            reformularButton.id = 'reformular-button';
-
-            // Insertar el botón como primer hijo dentro del contenedor del mensaje
-            if (messageContainer.firstChild) {
-                messageContainer.insertBefore(reformularButton, messageContainer.firstChild);
-            } else {
-                // Si no hay hijos, lo insertamos directamente
-                messageContainer.appendChild(reformularButton);
-            }
+    // Crear el botón que activará la reformulación
+    const reformularButton = document.createElement('button');
+    reformularButton.innerHTML = '<i class="bi bi-repeat" style="width: 24px; height: 24px;"></i>'; // Usar el icono de Bootstrap
+    applyButtonStyle(reformularButton); // Apply style here
+    reformularButton.id = 'reformular-button';
+    reformularButton.style.width = '24px';
+    reformularButton.style.height = '24px';
+    reformularButton.style.fontSize = '20px';
+    reformularButton.style.margin = '0';
+    reformularButton.style.padding = '0px 0px 0px 10px';
+    reformularButton.style.title = 'Reformular mensaje';
+    console.log("Container", messageContainer);
+    // Insertar el botón después del texto, dentro del contenedor del mensaje.
+    messageContainer.appendChild(reformularButton);  // o insertBefore si necesitas una posición específica
 
             console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
 
