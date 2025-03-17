@@ -338,7 +338,6 @@ function insertReformular(text){
 
 function injectReformular(text) {
     console.log("Inyectando el botón de reformular");
-
     const messageContainer = document.querySelector('div.x78zum5.x98rzlu.xuk3077.xpvyfi4.x1iji9kk');
 
     if (!messageContainer) {
@@ -361,20 +360,14 @@ function injectReformular(text) {
     // Insertar el botón después del texto, dentro del contenedor del mensaje.
     messageContainer.appendChild(reformularButton);  // o insertBefore si necesitas una posición específica
 
-            console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
+    console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
 
-            // Event Listener para el botón
-            reformularButton.addEventListener('click', () => {
-                insertReformular(text);
-            });
-        }
+    // Event Listener para el botón
+    reformularButton.addEventListener('click', () => {
+        insertReformular(text);
     });
 
-    // Configurar el observador para monitorear cambios en el DOM
-    observer.observe(document.body, {
-        childList: true, // Observar si se añaden o eliminan nodos hijos
-        subtree: true,  // Observar todos los descendientes
-    });
+    setBoton = true;
 }
 
 
