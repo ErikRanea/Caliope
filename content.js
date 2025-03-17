@@ -338,11 +338,7 @@ function insertReformular(text){
 }
 function injectReformular(text) {
     console.log("Inyectando el botón de reformular");
-    //const messageContainer = document.querySelector("div.message-in"); //Este selector probablemente necesite ajuste fino
-     //Encontrar el contenedor del ultimo mensaje que tenga la clase message-in
-     //const messageContainer = Array.from(document.querySelectorAll('div.message-in')).pop();
-    const messageContainer = document.querySelector('div[aria-label="Escribe un mensaje"]');
-
+    const messageContainer = document.querySelector('div.x78zum5.x98rzlu.xuk3077.xpvyfi4.x1iji9kk');
 
     if (!messageContainer) {
         console.warn("⚠️ No se encontró el contenedor del mensaje.");
@@ -351,10 +347,16 @@ function injectReformular(text) {
 
     // Crear el botón que activará la reformulación
     const reformularButton = document.createElement('button');
-    reformularButton.innerHTML = '<i class="bi bi-repeat"></i>'; // Usar el icono de Bootstrap
+    reformularButton.innerHTML = '<i class="bi bi-repeat" style="width: 24px; height: 24px;"></i>'; // Usar el icono de Bootstrap
     applyButtonStyle(reformularButton); // Apply style here
     reformularButton.id = 'reformular-button';
-
+    reformularButton.style.width = '24px';
+    reformularButton.style.height = '24px';
+    reformularButton.style.fontSize = '20px';
+    reformularButton.style.margin = '0';
+    reformularButton.style.padding = '0px 0px 0px 10px';
+    reformularButton.style.title = 'Reformular mensaje';
+    console.log("Container", messageContainer);
     // Insertar el botón después del texto, dentro del contenedor del mensaje.
     messageContainer.appendChild(reformularButton);  // o insertBefore si necesitas una posición específica
 
