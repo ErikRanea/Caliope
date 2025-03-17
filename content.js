@@ -29,6 +29,7 @@ function injectUI(whatsappContainer) {
         return;
     }
 
+
     // 2. Crear el botón que activará la grabación
     caliopeButton = document.createElement('button');
     caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>'; // Usar el icono de Bootstrap
@@ -303,6 +304,11 @@ function insertText(text) {
     if (textarea) {
         // 3. Simular la entrada de texto
         textarea.focus();
+
+
+        document.execCommand('selectAll', false, null);
+        document.execCommand('delete', false, null);
+
         document.execCommand('insertText', false, text);
 
         // 4. Disparar un evento de input para que WhatsApp detecte el cambio
@@ -324,49 +330,55 @@ function insertReformular(text){
         response => {
             if (response && response.reformulado) {
                 console.log("✅ Mensaje reformulado:", response.reformulado);
-                //Reemplazar el texto actual en el textarea con el texto reformulado
-                const textarea = document.querySelector("div[aria-label='Escribe un mensaje'][contenteditable='true']");
-                if (textarea) {
-                    textarea.focus(); // Asegurarse de que el textarea tiene el foco
-                    document.execCommand('selectAll', false, null); // Seleccionar todo el texto
-                    document.execCommand('insertText', false, response.reformulado); // Insertar el texto reformulado
-                    textarea.dispatchEvent(new Event('input', { bubbles: true })); // Disparar el evento 'input'
-                }
+                insertText(response.reformulado);
             }
         }
     );
 }
+
 function injectReformular(text) {
     console.log("Inyectando el botón de reformular");
-    //const messageContainer = document.querySelector("div.message-in"); //Este selector probablemente necesite ajuste fino
-     //Encontrar el contenedor del ultimo mensaje que tenga la clase message-in
-     //const messageContainer = Array.from(document.querySelectorAll('div.message-in')).pop();
-    const messageContainer = document.querySelector('div[aria-label="Escribe un mensaje"]');
 
+    // Usamos MutationObserver para observar cambios en el DOM
+    const observer = new MutationObserver(() => {
+        const messageContainer = document.querySelector('div[aria-label="Escribe un mensaje"]');
+        
+        if (messageContainer) {
+            // Si el contenedor existe, detenemos el observador
+            observer.disconnect();
 
-    if (!messageContainer) {
-        console.warn("⚠️ No se encontró el contenedor del mensaje.");
-        return;
-    }
+            console.log("El contenedor del mensaje encontrado");
 
-    // Crear el botón que activará la reformulación
-    const reformularButton = document.createElement('button');
-    reformularButton.innerHTML = '<i class="bi bi-repeat"></i>'; // Usar el icono de Bootstrap
-    applyButtonStyle(reformularButton); // Apply style here
-    reformularButton.id = 'reformular-button';
+            // Crear el botón que activará la reformulación
+            const reformularButton = document.createElement('button');
+            reformularButton.innerHTML = '<i class="bi bi-repeat"></i>'; // Usar el icono de Bootstrap
+            applyButtonStyle(reformularButton); // Apply style here
+            reformularButton.id = 'reformular-button';
 
-    // Insertar el botón después del texto, dentro del contenedor del mensaje.
-    messageContainer.appendChild(reformularButton);  // o insertBefore si necesitas una posición específica
+            // Insertar el botón como primer hijo dentro del contenedor del mensaje
+            if (messageContainer.firstChild) {
+                messageContainer.insertBefore(reformularButton, messageContainer.firstChild);
+            } else {
+                // Si no hay hijos, lo insertamos directamente
+                messageContainer.appendChild(reformularButton);
+            }
 
-    console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
+            console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
 
-    // Event Listener para el botón
-    reformularButton.addEventListener('click', () => {
-        insertReformular(text);
+            // Event Listener para el botón
+            reformularButton.addEventListener('click', () => {
+                insertReformular(text);
+            });
+        }
     });
 
-    setBoton = true;
+    // Configurar el observador para monitorear cambios en el DOM
+    observer.observe(document.body, {
+        childList: true, // Observar si se añaden o eliminan nodos hijos
+        subtree: true,  // Observar todos los descendientes
+    });
 }
+
 
 // --- Inyectar los estilos CSS ---
 const style = document.createElement('style');
@@ -389,6 +401,8 @@ document.head.appendChild(style);
 function observeAndInject() {
     setInterval(() => {
         let whatsappContainer = document.querySelector('._ak1r');
+
+
 
         let botonCaliope = document.getElementById('caliope-button');
         if (whatsappContainer && !botonCaliope) {

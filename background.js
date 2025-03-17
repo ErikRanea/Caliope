@@ -138,6 +138,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             console.error("Hubo un error al reformular el mensaje: ", error);
             sendResponse({ error: "Error al reformular el mensaje: "+error.mensaje });
         });
+
+        return true;
     }
 
 
