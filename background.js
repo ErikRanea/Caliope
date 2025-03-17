@@ -123,6 +123,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         return true;
     }
+
+    //Solucitar reformulación de la transcripción
+    if(request.action === "reformularMensaje"){
+        console.log("Reformulando el mensaje");
+        reformularMensaje
+    }
+
+
 });
 
 //Crear ventana emergente
@@ -136,3 +144,4 @@ chrome.action.onClicked.addListener(() => {
         left: 100
     });
 });
+
