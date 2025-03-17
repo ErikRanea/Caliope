@@ -213,27 +213,30 @@ async function startRecording(waves, audioWaves) {
         };
 
         mediaRecorder.onstop = async () => {
-            // Detener el stream de audio y procesarlo
-            source.disconnect(analyser);
-            analyser.disconnect(audioContext);
-            audioContext.close();
+            if(!isDeleted){
+                // Detener el stream de audio y procesarlo
+                source.disconnect(analyser);
+                analyser.disconnect(audioContext);
+                audioContext.close();
 
-            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-            const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
+                const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
 
-            reader.onloadend = () => {
-                console.log("🚀 Enviando audio al background.js...");
-                chrome.runtime.sendMessage(
-                    { action: "transcribeAudio", audioData: reader.result },
-                    response => {
-                        if (response && response.transcription) {
-                            insertText(response.respuesta);
-                            stopRecording(true);
+                reader.onloadend = () => {
+                    console.log("🚀 Enviando audio al background.js...");
+                    chrome.runtime.sendMessage(
+                        { action: "transcribeAudio", audioData: reader.result },
+                        response => {
+                            if (response && response.transcription) {
+                                insertText(response.respuesta);
+                                stopRecording(true);
+                            }
                         }
-                    }
-                );
-            };
+                    );
+                };
+            }
+
         };
 
         mediaRecorder.start();
