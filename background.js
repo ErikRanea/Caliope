@@ -127,7 +127,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     //Solucitar reformulación de la transcripción
     if(request.action === "reformularMensaje"){
         console.log("Reformulando el mensaje");
-        reformularMensaje
+        reformularMensaje(request.mensaje)
+        .then((response) => {
+            console.log("El mensaje ha sido reformulado con éxito -> "+response);
+
+            sendResponse({ reformulado: response});
+
+        }
+        ).catch((error) => {
+            console.error("Hubo un error al reformular el mensaje: ", error);
+            sendResponse({ error: "Error al reformular el mensaje: "+error.mensaje });
+        });
     }
 
 
