@@ -29,11 +29,6 @@ function injectUI(whatsappContainer) {
         return;
     }
 
-    // --- Eliminar el botón si ya existe ---
-    if (caliopeButton) {
-        caliopeButton.remove();
-    }
-
     // 2. Crear el botón que activará la grabación
     caliopeButton = document.createElement('button');
     caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>'; // Usar el icono de Bootstrap
@@ -172,7 +167,7 @@ async function startRecording(waves, audioWaves) {
         mediaRecorder = new MediaRecorder(streamMicrofono, { mimeType: "audio/webm;codecs=opus" });
         audioChunks = [];
 
-        // --- Crear el contexto de audio y el analizador ---
+        // Crear el contexto de audio
         const audioContext = new AudioContext();
         const source = audioContext.createMediaStreamSource(streamMicrofono);
         const analyser = audioContext.createAnalyser();
@@ -180,8 +175,8 @@ async function startRecording(waves, audioWaves) {
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
+        // Solo conectar al analizador, no a los altavoces
         source.connect(analyser);
-        analyser.connect(audioContext.destination);
 
         // --- Función para actualizar las ondas de audio ---
         function updateAudioWaves() {
@@ -193,16 +188,14 @@ async function startRecording(waves, audioWaves) {
             }
             const average = sum / bufferLength;
 
-             // Normalizar el valor promedio a un rango de 0 a 1
-             const normalizedValue = average / 128;
-           
-             // Establecer una altura máxima para las ondas
-             const maxHeight = 20;
+            // Normalizar el valor promedio a un rango de 0 a 1
+            const normalizedValue = average / 128;
+
+            // Establecer una altura máxima para las ondas
+            const maxHeight = 20;
 
             for (let i = 0; i < waves.length; i++) {
-                const wave = waves[i];
-                 // Establecer la altura de la onda basada en el valor normalizado y la altura máxima
-                wave.style.height = `${normalizedValue * maxHeight}px`;
+                waves[i].style.height = `${normalizedValue * maxHeight}px`;
             }
 
             requestAnimationFrame(updateAudioWaves);
@@ -217,70 +210,38 @@ async function startRecording(waves, audioWaves) {
         };
 
         mediaRecorder.onstop = async () => {
-            //Detener el stream de audio
+            // Detener el stream de audio y procesarlo
+            source.disconnect(analyser);
+            analyser.disconnect(audioContext);
+            audioContext.close();
 
-            if(!isDeleted){
-                source.disconnect(analyser);
-                analyser.disconnect(audioContext);
-                audioContext.close();
-    
-                console.log("⏹️ Deteniendo grabación de audio...");
-    
-                const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-                console.log("📂 Blob de audio generado:", audioBlob);
-    
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-    
-                reader.onloadend = () => {
-                    console.log("🚀 Enviando audio al background.js...");
-                    chrome.runtime.sendMessage(
-                        {
-                            action: "transcribeAudio",
-                            audioData: reader.result
-                        },
-                        response => {
-                            if (chrome.runtime.lastError) {
-                                console.error("❌ Error en el mensaje a background.js:", chrome.runtime.lastError.message);
-                                // TODO: Mostrar el error en la interfaz
-                                return;
-                            }
-    
-                            if (response && response.transcription) {
-                                console.log("📩 Respuesta recibida:", JSON.stringify(response));
-    
-                                try {
-                                    if (response && response.respuesta) {
-                                        // Insertar las respuestas en el chat de WhatsApp
-                                        insertText(response.respuesta); // Insertar la transcripción original
-                                        stopRecording(true);
+            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
 
-                                    } else {
-                                        console.error("⚠️ La respuesta de OpenAI no tiene el formato esperado.");
-                                    }
-                                } catch (error) {
-                                    console.error("🚨 Error procesando la respuesta de OpenAI:", error);
-                                    // TODO: Mostrar el error en la interfaz
-                                }
-                            } else {
-                                // TODO: Mostrar el error en la interfaz
-                                console.error("❌ Error en la transcripción.");
-                            }
+            reader.onloadend = () => {
+                console.log("🚀 Enviando audio al background.js...");
+                chrome.runtime.sendMessage(
+                    { action: "transcribeAudio", audioData: reader.result },
+                    response => {
+                        if (response && response.transcription) {
+                            insertText(response.respuesta);
+                            stopRecording(true);
                         }
-                    );
-                };
-            }
+                    }
+                );
+            };
         };
 
         mediaRecorder.start();
         isRecording = true;
-        console.log("Iniciando grabación del mediaRecorder")
+        console.log("Iniciando grabación del mediaRecorder");
     } catch (error) {
         console.error("❌ Error al acceder al micrófono:", error);
         alert("Ocurrió un error al intentar acceder al micrófono.");
-        // TODO: Mostrar el error en la interfaz
     }
 }
+
 
 function stopRecording(liberarMicrofono = false, callback = () => {}) {
     console.log("Entrando en stopRecording");
