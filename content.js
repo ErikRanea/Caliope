@@ -311,9 +311,61 @@ function insertText(text) {
 
 
         console.log("✅ Texto insertado en el chat:", text);
+        injectReformular(text);
     } else {
         console.error("❌ No se encontró el textarea del chat o el botón de enviar.");
     }
+}
+
+function insertReformular(text){
+    console.log("Reformulando el mensaje");
+    chrome.runtime.sendMessage(
+        { action: "reformularMensaje", mensaje: text },
+        response => {
+            if (response && response.reformulado) {
+                console.log("✅ Mensaje reformulado:", response.reformulado);
+                //Reemplazar el texto actual en el textarea con el texto reformulado
+                const textarea = document.querySelector("div[aria-label='Escribe un mensaje'][contenteditable='true']");
+                if (textarea) {
+                    textarea.focus(); // Asegurarse de que el textarea tiene el foco
+                    document.execCommand('selectAll', false, null); // Seleccionar todo el texto
+                    document.execCommand('insertText', false, response.reformulado); // Insertar el texto reformulado
+                    textarea.dispatchEvent(new Event('input', { bubbles: true })); // Disparar el evento 'input'
+                }
+            }
+        }
+    );
+}
+function injectReformular(text) {
+    console.log("Inyectando el botón de reformular");
+    //const messageContainer = document.querySelector("div.message-in"); //Este selector probablemente necesite ajuste fino
+     //Encontrar el contenedor del ultimo mensaje que tenga la clase message-in
+     //const messageContainer = Array.from(document.querySelectorAll('div.message-in')).pop();
+    const messageContainer = document.querySelector('div[aria-label="Escribe un mensaje"]');
+
+
+    if (!messageContainer) {
+        console.warn("⚠️ No se encontró el contenedor del mensaje.");
+        return;
+    }
+
+    // Crear el botón que activará la reformulación
+    const reformularButton = document.createElement('button');
+    reformularButton.innerHTML = '<i class="bi bi-repeat"></i>'; // Usar el icono de Bootstrap
+    applyButtonStyle(reformularButton); // Apply style here
+    reformularButton.id = 'reformular-button';
+
+    // Insertar el botón después del texto, dentro del contenedor del mensaje.
+    messageContainer.appendChild(reformularButton);  // o insertBefore si necesitas una posición específica
+
+    console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
+
+    // Event Listener para el botón
+    reformularButton.addEventListener('click', () => {
+        insertReformular(text);
+    });
+
+    setBoton = true;
 }
 
 // --- Inyectar los estilos CSS ---
