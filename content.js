@@ -358,8 +358,11 @@ function injectReformular(text) {
     reformularButton.style.title = 'Reformular mensaje';
     console.log("Container", messageContainer);
     // Insertar el botón después del texto, dentro del contenedor del mensaje.
-    messageContainer.appendChild(reformularButton);  // o insertBefore si necesitas una posición específica
-
+    if(document.querySelector('#reformular-button')){
+        console.log("El botón ya existe");
+    }else{
+        messageContainer.appendChild(reformularButton);  // o insertBefore si necesitas una posición específica
+    }
     console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
 
     // Event Listener para el botón
