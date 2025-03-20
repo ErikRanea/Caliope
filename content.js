@@ -1,5 +1,3 @@
-// content.js
-
 let caliopeButton;
 let mediaRecorder;
 let audioChunks = [];
@@ -8,9 +6,8 @@ let streamMicrofono;
 let isRecording = false;
 let isPaused = false;
 let isDeleted = false;
-let setBoton = false;
 
-// Function to apply button style
+// Aplica estilos a los botones
 function applyButtonStyle(button) {
     button.style.fontSize = '30px';
     button.style.marginLeft = '10px';
@@ -23,144 +20,122 @@ function applyButtonStyle(button) {
     button.style.fontFamily = 'Inter, sans-serif';
 }
 
+// Inyecta la interfaz de usuario inicial
 function injectUI(whatsappContainer) {
     if (!whatsappContainer) {
         console.warn("⚠️ No se encontró el contenedor principal de WhatsApp.");
         return;
     }
 
-
-    // 2. Crear el botón que activará la grabación
     caliopeButton = document.createElement('button');
-    caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>'; // Usar el icono de Bootstrap
-    applyButtonStyle(caliopeButton); // Apply style here
+    caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>';
+    applyButtonStyle(caliopeButton);
     caliopeButton.id = 'caliope-button';
 
-    // 3. Añadir el botón al lado del elemento _ak1r
     whatsappContainer.parentNode.insertBefore(caliopeButton, whatsappContainer.nextSibling);
-
     console.log("✅ Botón de Caliope IA inyectado en WhatsApp Web.");
 
-    // --- Event Listener para el botón ---
     caliopeButton.addEventListener('click', () => {
-        // Ocultar el botón de Caliope IA
         caliopeButton.style.display = 'none';
-
-        // Crear los controles de grabación
         createRecordingControls();
     });
-
-    setBoton = true;
 }
 
+// Crea los controles de grabación
 function createRecordingControls() {
-     // 1. Intentar encontrar el contenedor principal de la conversación
-     let whatsappContainer = document.querySelector('._ak1r');
+    let whatsappContainer = document.querySelector('._ak1r');
 
-     if (!whatsappContainer) {
-         console.warn("⚠️ No se encontró el contenedor principal de WhatsApp para los controles. Reintentando...");
-         return;
-     }
-    // --- Crear el contenedor para los controles ---
+    if (!whatsappContainer) {
+        console.warn("⚠️ No se encontró el contenedor principal de WhatsApp para los controles.");
+        return;
+    }
+
     const controlsContainer = document.createElement('div');
     controlsContainer.id = 'caliope-controls-container';
     controlsContainer.style.display = 'flex';
     controlsContainer.style.alignItems = 'center';
-    controlsContainer.style.marginLeft = '10px'; // Espacio entre los controles y el elemento _ak1r
+    controlsContainer.style.marginLeft = '10px';
 
-    // --- Botón de Papelera ---
     const trashButton = document.createElement('button');
     trashButton.innerHTML = '<i class="bi bi-trash-fill"></i>';
     applyButtonStyle(trashButton);
     trashButton.addEventListener('click', () => {
         console.log("El botón de basura se ha seleccionado");
         isDeleted = true;
-        // Detener la grabación y limpiar
         stopRecording(true);
-        // Eliminar los controles de grabación
         controlsContainer.remove();
-        // Mostrar el botón de Caliope IA
         caliopeButton.style.display = 'inline-block';
     });
 
-    // --- Ondas de Audio ---
     const audioWaves = document.createElement('div');
     audioWaves.id = 'caliope-audio-waves';
-    audioWaves.style.width = '80px'; // Aumentar el ancho para más ondas
+    audioWaves.style.width = '80px';
     audioWaves.style.height = '20px';
-    audioWaves.style.backgroundColor = '#7c8c95'; // Gris claro
-    audioWaves.style.display = 'flex'; // Usar flexbox para las ondas
+    audioWaves.style.backgroundColor = '#7c8c95';
+    audioWaves.style.display = 'flex';
     audioWaves.style.borderRadius = '3px';
-    audioWaves.style.padding = '5px 0px'; // Espacio entre los controles
+    audioWaves.style.padding = '5px 0px';
     audioWaves.style.alignItems = 'center';
-    audioWaves.style.justifyContent = 'center'; // Espacio entre las ondas
+    audioWaves.style.justifyContent = 'center';
 
-    const waves = []; // Almacenar las ondas
-    for (let i = 0; i < 5; i++) { // Crear 5 ondas
+    const waves = [];
+    for (let i = 0; i < 5; i++) {
         const wave = document.createElement('div');
         wave.classList.add('caliope-wave');
         wave.style.width = '5px';
-        wave.style.margin = '0 2px'; // Espacio entre las ondas
-        wave.style.backgroundColor = '#202c33'; 
+        wave.style.margin = '0 2px';
+        wave.style.backgroundColor = '#202c33';
         audioWaves.appendChild(wave);
-        waves.push(wave); // Guardar la referencia a la onda
+        waves.push(wave);
     }
 
-    // --- Botón de Pausa/Reanudar ---
     const pauseButton = document.createElement('button');
     pauseButton.innerHTML = '<i class="bi bi-pause"></i>';
     applyButtonStyle(pauseButton);
     pauseButton.addEventListener('click', () => {
         console.log("Se ha seleccionado el botón de pausa");
         if (isPaused) {
-            console.log("Reinciando grabación");
+            console.log("Reanudando grabación");
             mediaRecorder.resume();
-            console.log("Se ha reiniciado el grabado");
             pauseButton.innerHTML = '<i class="bi bi-pause"></i>';
+            updateAudioWaves();
         } else {
-            console.log("Deteniendo grabación");
+            console.log("Pausando grabación");
             mediaRecorder.pause();
-            console.log("Se ha detenido la grabación");
             pauseButton.innerHTML = '<i class="bi bi-play"></i>';
         }
         isPaused = !isPaused;
     });
 
-     // --- Botón de Detener ---
-     const stopButton = document.createElement('button');
-     stopButton.innerHTML = '<i class="bi bi-stop-fill"></i>';
-     applyButtonStyle(stopButton);
-     stopButton.addEventListener('click', () => {
-         stopRecording(false, () => { // Detener la grabación y luego insertar el texto
+    const stopButton = document.createElement('button');
+    stopButton.innerHTML = '<i class="bi bi-stop-fill"></i>';
+    applyButtonStyle(stopButton);
+    stopButton.addEventListener('click', () => {
+        stopRecording(false, () => {
             isDeleted = false;
-            console.log("El valor de isDeleted es "+isDeleted);
-            controlsContainer.remove(); // Eliminar los controles
-            caliopeButton.style.display = 'inline-block'; // Mostrar el botón de Caliope IA
-         });
-     });
+            console.log("El valor de isDeleted es " + isDeleted);
+            controlsContainer.remove();
+            caliopeButton.style.display = 'inline-block';
+        });
+    });
 
-    // --- Añadir los controles al contenedor ---
     controlsContainer.appendChild(trashButton);
     controlsContainer.appendChild(audioWaves);
     controlsContainer.appendChild(pauseButton);
-    controlsContainer.appendChild(stopButton); // Añadir el botón de detener
+    controlsContainer.appendChild(stopButton);
 
-    // 1. Intentar encontrar el contenedor principal de la conversación
     let whatsappContainerToControl = document.querySelector('._ak1r');
 
-        if (!whatsappContainerToControl) {
-            console.warn("⚠️ No se encontró el contenedor principal de WhatsApp para los controles. Reintentando...");
-            return;
-        }
+    if (!whatsappContainerToControl) {
+        console.warn("⚠️ No se encontró el contenedor principal de WhatsApp para los controles.");
+        return;
+    }
 
-    // --- Insertar el contenedor de controles en el DOM ---
     whatsappContainerToControl.parentNode.insertBefore(controlsContainer, whatsappContainerToControl.nextSibling);
-
-    // --- Iniciar la grabación ---
-    startRecording(waves, audioWaves); // Pasa las ondas y el contenedor a la función startRecording
+    startRecording(waves, audioWaves);
 }
 
-// --- Funciones de Grabación ---
+// Inicia la grabación de audio
 async function startRecording(waves, audioWaves) {
     const permissionGranted = await requestMicrophonePermission();
     if (!permissionGranted) return;
@@ -171,73 +146,60 @@ async function startRecording(waves, audioWaves) {
         mediaRecorder = new MediaRecorder(streamMicrofono, { mimeType: "audio/webm;codecs=opus" });
         audioChunks = [];
 
-        // Crear el contexto de audio
-        const audioContext = new AudioContext();
+        audioContext = new AudioContext();
         const source = audioContext.createMediaStreamSource(streamMicrofono);
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
-        // Solo conectar al analizador, no a los altavoces
         source.connect(analyser);
 
-        // --- Función para actualizar las ondas de audio ---
         function updateAudioWaves() {
-            analyser.getByteFrequencyData(dataArray);
+            if(!isPaused){
+                    analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / bufferLength;
+                const normalizedValue = average / 128;
+                const maxHeight = 20;
 
-            let sum = 0;
-            for (let i = 0; i < bufferLength; i++) {
-                sum += dataArray[i];
+                for (let i = 0; i < waves.length; i++) {
+                    waves[i].style.height = `${normalizedValue * maxHeight}px`;
+                }
+                requestAnimationFrame(updateAudioWaves);
             }
-            const average = sum / bufferLength;
-
-            // Normalizar el valor promedio a un rango de 0 a 1
-            const normalizedValue = average / 128;
-
-            // Establecer una altura máxima para las ondas
-            const maxHeight = 20;
-
-            for (let i = 0; i < waves.length; i++) {
-                waves[i].style.height = `${normalizedValue * maxHeight}px`;
-            }
-
-            requestAnimationFrame(updateAudioWaves);
+            
         }
 
-        updateAudioWaves(); // Iniciar la animación
+        updateAudioWaves();
 
-        mediaRecorder.ondataavailable = event => {
+        mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
                 audioChunks.push(event.data);
             }
         };
 
         mediaRecorder.onstop = async () => {
-            if(!isDeleted){
-                // Detener el stream de audio y procesarlo
-                source.disconnect(analyser);
-                analyser.disconnect(audioContext);
-                audioContext.close();
+          if (!isDeleted) {
+            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
 
-                const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-
-                reader.onloadend = () => {
-                    console.log("🚀 Enviando audio al background.js...");
-                    chrome.runtime.sendMessage(
-                        { action: "transcribeAudio", audioData: reader.result },
-                        response => {
-                            if (response && response.transcription) {
-                                insertText(response.respuesta);
-                                stopRecording(true);
-                            }
-                        }
-                    );
-                };
-            }
-
+            reader.onloadend = () => {
+              console.log("🚀 Enviando audio al background.js...");
+              chrome.runtime.sendMessage(
+                { action: "transcribeAudio", audioData: reader.result },
+                (response) => {
+                  if (response && response.transcription) {
+                    insertText(response.respuesta);
+                  }
+                }
+              );
+            };
+          }
         };
 
         mediaRecorder.start();
@@ -249,40 +211,33 @@ async function startRecording(waves, audioWaves) {
     }
 }
 
-
+// Detiene la grabación de audio
 function stopRecording(liberarMicrofono = false, callback = () => {}) {
     console.log("Entrando en stopRecording");
-
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
         console.log("🎤 Deteniendo grabación de audio...");
-        mediaRecorder.stop(); // Detener el recorder
-        isRecording = false; // Cambiar el estado de grabación a falso
+        mediaRecorder.stop();
+        isRecording = false;
 
-        // Asegurarse de que todas las conexiones de audio se detienen
         if (streamMicrofono) {
-            // Si existe, desconectar todas las pistas del stream
-            streamMicrofono.getTracks().forEach(track => track.stop()); // Detener todas las pistas de audio
-            streamMicrofono = null; // Limpiar la variable del stream
+            streamMicrofono.getTracks().forEach(track => track.stop());
+            streamMicrofono = null;
             console.log("🎤 Micrófono liberado.");
         }
-
-        // Limpiar los chunks de audio
-        audioChunks = [];
-        
-        // Desconectar cualquier fuente de audio
         if (audioContext) {
             audioContext.close().then(() => {
-                console.log("🎤 Contexto de audio cerrado.");
-            }).catch((error) => {
-                console.error("❌ Error al cerrar el contexto de audio:", error);
+                console.log("Audio context closed");
+            }).catch(error => {
+                console.error("Error closing audio context:", error);
             });
+            audioContext = null;
         }
-
-        callback(); // Llamar al callback después de detener la grabación
+        audioChunks = [];
+        callback();
     }
 }
 
-
+// Solicita permiso para usar el micrófono
 async function requestMicrophonePermission() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -291,51 +246,70 @@ async function requestMicrophonePermission() {
         return true;
     } catch (error) {
         console.error("❌ Permiso de micrófono denegado:", error);
-        alert("Permiso de micrófono denegado. Habilítalo en la configuración del navegador.");
+        alert("Permiso de micrófono denegado.  Actívalo en la configuración del navegador.");
         return false;
     }
 }
 
+// Inserta texto en el área de entrada de WhatsApp (usa execCommand)
 function insertText(text) {
-    // 1. Encontrar el textarea (el selector puede variar)
     const textarea = document.querySelector("div[aria-label='Escribe un mensaje'][contenteditable='true']");
 
-    
     if (textarea) {
-        // 3. Simular la entrada de texto
         textarea.focus();
 
-
-        document.execCommand('selectAll', false, null);
-        document.execCommand('delete', false, null);
+        // --- Simular Ctrl+A (o Cmd+A) ---
+        const selectAllEvent = new KeyboardEvent('keydown', {
+            key: 'a',
+            code: 'KeyA',
+            keyCode: 65,
+            which: 65,
+            ctrlKey: !navigator.userAgentData.platform.includes('mac'), // Ctrl para Windows/Linux
+            metaKey: navigator.userAgentData.platform.includes('mac'), // Cmd para Mac
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+        });
+        textarea.dispatchEvent(selectAllEvent);
+        // ---------------------------------
 
         document.execCommand('insertText', false, text);
+        console.log("Se ha insertado el siguiente texto en el textarea ->"+ text);
 
-        // 4. Disparar un evento de input para que WhatsApp detecte el cambio
-        const event = new Event('input', { bubbles: true });
-        textarea.dispatchEvent(event);
+        // --- Ya NO necesitamos disparar el evento 'input' manualmente ---
+        // --- Ya NO necesitamos manipular el DOM ---
+        // --- Ya NO necesitamos restaurar la selección ---
 
+       // injectReformular(textarea); //Pasamos el textarea
 
-        console.log("✅ Texto insertado en el chat:", text);
-        injectReformular(text);
     } else {
-        console.error("❌ No se encontró el textarea del chat o el botón de enviar.");
+        console.error("❌ No se encontró el textarea del chat.");
     }
 }
 
-function insertReformular(text){
-    console.log("Reformulando el mensaje");
-    chrome.runtime.sendMessage(
-        { action: "reformularMensaje", mensaje: text },
-        response => {
-            if (response && response.reformulado) {
-                console.log("✅ Mensaje reformulado:", response.reformulado);
-                insertText(response.reformulado);
+
+// Reformular el mensaje (llama a insertText con el texto reformulado)
+// Usamos async/await y una Promesa para asegurar el orden
+/*
+async function reformulateMessage(text) {
+    return new Promise((resolve, reject) => {
+        console.log("Reformulando el mensaje:", text);
+        chrome.runtime.sendMessage(
+            { action: "reformularMensaje", mensaje: text },
+            (response) => {
+                if (response && response.reformulado) {
+                    console.log("✅ Mensaje reformulado:", response.reformulado);
+                    resolve(response.reformulado); // Resuelve la Promesa con el texto reformulado
+                } else {
+                    console.error("Error al reformular:", response);
+                    reject(new Error("Error al reformular el mensaje.")); // Rechaza la Promesa si hay error
+                }
             }
-        }
-    );
+        );
+    });
 }
 
+/*
 function injectReformular(text) {
     console.log("Inyectando el botón de reformular");
     const messageContainer = document.querySelector('div.x78zum5.x98rzlu.xuk3077.xpvyfi4.x1iji9kk');
@@ -345,10 +319,9 @@ function injectReformular(text) {
         return;
     }
 
-    // Crear el botón que activará la reformulación
     const reformularButton = document.createElement('button');
-    reformularButton.innerHTML = '<i class="bi bi-repeat" style="width: 24px; height: 24px;"></i>'; // Usar el icono de Bootstrap
-    applyButtonStyle(reformularButton); // Apply style here
+    reformularButton.innerHTML = '<i class="bi bi-repeat" style="width: 24px; height: 24px;"></i>';
+    applyButtonStyle(reformularButton);
     reformularButton.id = 'reformular-button';
     reformularButton.style.width = '24px';
     reformularButton.style.height = '24px';
@@ -357,54 +330,56 @@ function injectReformular(text) {
     reformularButton.style.padding = '0px 0px 0px 10px';
     reformularButton.style.title = 'Reformular mensaje';
     console.log("Container", messageContainer);
-    // Insertar el botón después del texto, dentro del contenedor del mensaje.
-    if(document.querySelector('#reformular-button')){
+
+    if (document.querySelector('#reformular-button')) {
         console.log("El botón ya existe");
-    }else{
-        messageContainer.appendChild(reformularButton);  // o insertBefore si necesitas una posición específica
+    } else {
+        messageContainer.appendChild(reformularButton);
+        console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
     }
-    console.log("✅ Botón de reformular inyectado en WhatsApp Web.");
 
-    // Event Listener para el botón
-    reformularButton.addEventListener('click', () => {
-        insertReformular(text);
+    // Event Listener para el botón (CORREGIDO)
+    reformularButton.addEventListener('click', async () => {
+        // Obtener el textarea *DENTRO* del listener
+        const textarea = document.querySelector("div[aria-label='Escribe un mensaje'][contenteditable='true']");
+        if (textarea) {
+            const currentText = textarea.innerText.trim(); // Obtener el texto *ACTUAL*
+            console.log("Botón de reformular clickeado. Texto a reformular:", currentText);
+            // Usamos await para esperar a que reformulateMessage termine.
+            try {
+                const reformulado = await reformulateMessage(currentText);
+                insertText(reformulado); //  Llama a insertText con el texto *ACTUAL*
+            } catch (error){
+                console.error(error);
+            }
+        } else {
+            console.error("No se pudo encontrar el textarea al hacer clic en reformular.");
+        }
     });
-
-    setBoton = true;
-}
-
-
-// --- Inyectar los estilos CSS ---
+}*/
+// Estilos CSS
 const style = document.createElement('style');
 style.textContent = `
-    /* Importar Bootstrap Icons */
     @import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css");
 
-    /* Estilos para las ondas de audio */
     .caliope-wave {
         width: 5px;
         height: 20px;
-        background-color: #00a884; /* Verde */
+        background-color: #00a884;
         border-radius: 5px;
-        
     }
 `;
 document.head.appendChild(style);
 
-// Function to observe and reinject UI
+// Observa y reinyecta la UI
 function observeAndInject() {
     setInterval(() => {
         let whatsappContainer = document.querySelector('._ak1r');
-
-
-
         let botonCaliope = document.getElementById('caliope-button');
         if (whatsappContainer && !botonCaliope) {
             injectUI(whatsappContainer);
-
         }
-    }, 100); // Check every 2 seconds
+    }, 100);
 }
 
-// Call the function to start observing and inject the UI
 observeAndInject();

@@ -2,9 +2,11 @@ importScripts("config.js");
 importScripts("whisper.js");
 importScripts("openai.js");
 
+
+/*
 let vectorBase = [];
 
-// Base de conocimientos con información relevante
+// Base de conocimientos (sin cambios)
 const baseConocimientos = [
     "Nuestros cursos de inglés en Malta tienen diferentes precios según la duración y el nivel.",
     "Ofrecemos alojamiento en residencias, familias anfitrionas y apartamentos compartidos.",
@@ -14,7 +16,7 @@ const baseConocimientos = [
     "Para inscribirse en un curso, se requiere un depósito inicial del 20%."
 ];
 
-//Cargar `vectorBase` desde `chrome.storage`
+// Cargar `vectorBase` (sin cambios)
 async function cargarBaseDesdeStorage() {
     return new Promise(resolve => {
         chrome.storage.local.get(["vectorBase"], (result) => {
@@ -30,7 +32,8 @@ async function cargarBaseDesdeStorage() {
     });
 }
 
-//Vectorizar y almacenar `vectorBase` en `chrome.storage`
+// Vectorizar y almacenar (sin cambios)
+/*
 async function vectorizarBaseConocimientos() {
     console.log("🛠️ Iniciando vectorización de la base de conocimientos...");
 
@@ -43,7 +46,7 @@ async function vectorizarBaseConocimientos() {
             console.error(`🚨 Error al vectorizar "${tema}":`, error);
         }
     }
-    
+
 
     if (nuevaVectorizacion.length > 0) {
         vectorBase = nuevaVectorizacion;
@@ -54,8 +57,9 @@ async function vectorizarBaseConocimientos() {
         console.error("❌ Error: No se pudo generar una base de conocimientos vectorizada.");
     }
 }
-
-//Inicializar la base de conocimientos
+*/
+// Inicializar base (sin cambios)
+/*
 async function inicializarBase() {
     const existeEnStorage = await cargarBaseDesdeStorage();
     if (!existeEnStorage) {
@@ -65,13 +69,14 @@ async function inicializarBase() {
 }
 
 inicializarBase();
-
-//Manejo de mensajes entrantes
+*/
+// Manejo de mensajes entrantes (con LOGS)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("📩 Mensaje recibido en `background.js`:", request.action);
+    console.log("📩 Mensaje recibido en `background.js`:", request.action, request); // LOG COMPLETO
 
     if (request.action === "transcribeAudio") {
-        if (request.audioData) {
+        // ... (lógica de transcripción, sin cambios importantes aquí) ...
+         if (request.audioData) {
             console.log("🔍 Convirtiendo Base64 en Blob...");
 
             try {
@@ -91,6 +96,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         console.log("✅ Transcripción recibida:", transcription);
 
                         const respuesta = await respuestaTonalizada(transcription);
+                        console.log("La respuesta tonalizada es");
 
                         sendResponse({ transcription, respuesta });
                     })
@@ -110,10 +116,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ error: "No se recibió audio válido." });
         }
     }
-
-    //Solicitud para regenerar la base de conocimientos
+/*
     if (request.action === "regenerarVectorBase") {
-        console.log("🔄 Regenerando base de conocimientos...");
+        // ... (lógica de regeneración, sin cambios) ...
+         console.log("🔄 Regenerando base de conocimientos...");
         vectorizarBaseConocimientos().then(() => {
             sendResponse({ status: "VectorBase regenerado correctamente." });
         }).catch(error => {
@@ -124,28 +130,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
-    //Solucitar reformulación de la transcripción
-    if(request.action === "reformularMensaje"){
-        console.log("Reformulando el mensaje");
+    if (request.action === "reformularMensaje") {
+        console.log("Reformulando el mensaje (background.js):", request.mensaje); // LOG del mensaje original
         reformularMensaje(request.mensaje)
-        .then((response) => {
-            console.log("El mensaje ha sido reformulado con éxito -> "+response);
+            .then((response) => {
+                console.log("El mensaje ha sido reformulado con éxito (background.js):", response); // LOG de la respuesta
+                sendResponse({ reformulado: response });
+            })
+            .catch((error) => {
+                console.error("Hubo un error al reformular el mensaje (background.js):", error);
+                sendResponse({ error: "Error al reformular el mensaje: " + error.message });
+            });
 
-            sendResponse({ reformulado: response});
-
-        }
-        ).catch((error) => {
-            console.error("Hubo un error al reformular el mensaje: ", error);
-            sendResponse({ error: "Error al reformular el mensaje: "+error.mensaje });
-        });
-
-        return true;
+        return true; // MUY IMPORTANTE
     }
-
-
+        */
 });
 
-//Crear ventana emergente
+
+// Crear ventana emergente (sin cambios)
 chrome.action.onClicked.addListener(() => {
     chrome.windows.create({
         url: "popup.html",
@@ -156,4 +159,3 @@ chrome.action.onClicked.addListener(() => {
         left: 100
     });
 });
-

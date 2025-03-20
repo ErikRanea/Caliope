@@ -7,6 +7,7 @@ async function fetchWithTimeout(url, options, timeout = 10000) {
 }
 
 //Obtener embeddings de OpenAI
+/*
 async function obtenerEmbeddings(texto) {
     try {
         const apiKey = CONFIG.OPENAI_API_KEY;
@@ -30,8 +31,8 @@ async function obtenerEmbeddings(texto) {
         return null;
     }
 }
+*/
 
-//Enviar a chatgpt
 async function enviarGPT(text, context) {
     try {
         const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
@@ -69,7 +70,7 @@ async function enviarGPT(text, context) {
 
 
 
-
+/* 
 //Calcular similitud de coseno
 function cosineSimilarity(vec1, vec2) {
     let dotProduct = vec1.reduce((sum, v, i) => sum + v * vec2[i], 0);
@@ -135,7 +136,7 @@ async function respuestaYRecomendaciones(transcripcion, vectorBase) {
 
     return await enviarGPT(transcripcion, prompt);
 }
-
+*/
 
 async function respuestaTonalizada(transcripcion) {
     
@@ -194,6 +195,8 @@ async function respuestaTonalizada(transcripcion) {
     return await enviarGPT(transcripcion, prompt);
 }
 
+/*
+
 async function reformularMensaje(mensajeOriginal){
     const prompt = `
     Al solicitarte que me reformules una transcripción me has devuelto esto -> ${mensajeOriginal}.
@@ -248,3 +251,4 @@ async function reformularMensaje(mensajeOriginal){
     return await enviarGPT(mensajeOriginal,prompt);
 
 }
+*/
