@@ -251,16 +251,18 @@ function injectShadowDom(){
             top: 20px;
             left: 20px;
             width: 300px;
-            background-color: white;
-            border: 1px solid black;
+            background-color:rgb(221, 221, 221);
+            border-radius: 5px;
             padding: 10px;
             z-index: 1000;
-            cursor: move;
         }
         .header {
-            background-color: #f0f0f0;
-            padding: 5px;
+            font-family: Dragon, sans-serif;
+            color:rgb(40, 40, 40);
+            font-size: 40px;
             margin-bottom: 10px;
+            cursor: move;
+
         }
         /* Agrega más estilos aquí */
     `;
@@ -270,23 +272,65 @@ function injectShadowDom(){
     const popup = document.createElement('div');
     popup.classList.add('popup'); // Usamos una clase para aplicar los estilos
 
+    // Importar la tipografía desde una carpeta
+    const fontStyle = document.createElement('style');
+    fontStyle.textContent = `
+        @font-face {
+            font-family: 'Dragon';
+            src: url('./fonts/Dragon-Regular.otf') format('OpenType'),
+            font-weight: normal;
+            font-style: normal;
+        }
+    `;
+    shadow.appendChild(fontStyle);
     const header = document.createElement('div');
     header.classList.add('header');
-    header.textContent = 'Configuración de Caliope IA';
+    header.textContent = 'Caliope IA   |   Configuración';
+    header.style.padding = '10px 0px 10px 10px';
+
     popup.appendChild(header);
 
     const promptLabel = document.createElement('label');
-    promptLabel.textContent = 'Prompt:';
+    promptLabel.textContent = 'Tono del mensaje';
+    promptLabel.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
+    promptLabel.style.fontFamily = '"Inter", sans-serif';
+    promptLabel.style.fontSize = '14px'; // Cambia el tamaño de la fuente
+    promptLabel.style.padding = '10px 0px 5px 10px';
+
     popup.appendChild(promptLabel);
 
     const promptTextarea = document.createElement('textarea');
     promptTextarea.id = 'caliope-prompt'; // ID para acceder al textarea
     promptTextarea.rows = 5;
     promptTextarea.cols = 30;
+    promptTextarea.style.backgroundColor = '#fdf6f4';
+    promptTextarea.style.borderRadius = '5px';
+    promptTextarea.placeholder = 'Un tono directo y bien estructurado, con estilo business casual...';
+    promptTextarea.style.padding = '5px 5px';
+    promptTextarea.style.border = 'none';
+    promptTextarea.style.fontFamily = '"Inter", sans-serif';
+    promptTextarea.style.fontSize = '14px';
+    promptTextarea.style.resize = 'none'; // Deshabilitar el redimensionamiento
+    promptTextarea.style.boxSizing = 'border-box'; // Asegura que el padding no afecte al tamaño total
+    promptTextarea.style.width = '270px'; // Asegura que el textarea ocupe todo el ancho disponible
+    promptTextarea.style.margin = '10px'; // Añadir padding interno
+    promptTextarea.style.fontFamily = '"Inter", sans-serif'; // Cambia la fuente a Inter
+    promptTextarea.style.fontSize = '14px'; // Cambia el tamaño de la fuente
+    promptTextarea.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
+    
     popup.appendChild(promptTextarea);
 
     const saveButton = document.createElement('button');
-    saveButton.textContent = 'Guardar';
+    saveButton.textContent = 'GUARDAR';
+    saveButton.style.backgroundColor = 'rgb(40, 40, 40)'; // Cambia el color de fondo
+    saveButton.style.color = 'white'; // Cambia el color del texto
+    saveButton.style.border = 'none'; // Sin borde
+    saveButton.style.borderRadius = '8px'; // Bordes redondeados
+    saveButton.style.padding = '8px 16px'; // Espaciado interno
+    saveButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
+    saveButton.style.fontFamily = 'Dragon, sans-serif'; // Cambia la fuente a Inter
+    saveButton.style.fontSize = '25px'; // Cambia el tamaño de la fuente
+    saveButton.style.margin = '0px 0px 0px 10px'; // Añadir margen superior
     saveButton.addEventListener('click', () => {
         const prompt = shadow.getElementById('caliope-prompt').value;
         // Usa chrome.runtime.sendMessage para comunicarte con background.js
