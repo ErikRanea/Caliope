@@ -206,14 +206,121 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 
-// Crear ventana emergente (sin cambios)
-chrome.action.onClicked.addListener(() => {
-    chrome.windows.create({
-        url: "popup.html",
-        type: "popup",
-        width: 400,
-        height: 500,
-        top: 100,
-        left: 100
+//--------------------------------------------------------------------------
+
+//Crear popup
+
+chrome.action.onClicked.addListener((tab) => {
+    console.log("Botón de la extensión presionado");
+    chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: injectShadowDom, // Inyecta una función, no un archivo
     });
 });
+
+// Funciones para inyectar dentro del ShadowDOM
+
+function injectShadowDom(){
+
+    const popupId = 'caliope-ShadowDom';
+
+    function removeExistinPopup(){
+        const existingPopup = document.getElementById(popupId);
+        if(existingPopup){
+            existingPopup.remove();
+        }
+    }
+
+
+    removeExistinPopup();
+
+
+    // LÓGICA DE CREACIÓN DEL SHADODOM
+
+    const popupContainer = document.createElement('div');
+    popupContainer.id = popupId;
+
+    // Crear el Shadow DOM
+    const shadow = popupContainer.attachShadow({ mode: 'open' });
+
+    // Estilos CSS para el popup (dentro del Shadow DOM)
+    const style = document.createElement('style');
+    style.textContent = `
+        .popup {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            background-color: white;
+            border: 1px solid black;
+            padding: 10px;
+            z-index: 1000;
+            cursor: move;
+        }
+        .header {
+            background-color: #f0f0f0;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        /* Agrega más estilos aquí */
+    `;
+    shadow.appendChild(style);
+
+    // Crear el HTML del popup
+    const popup = document.createElement('div');
+    popup.classList.add('popup'); // Usamos una clase para aplicar los estilos
+
+    const header = document.createElement('div');
+    header.classList.add('header');
+    header.textContent = 'Configuración de Caliope IA';
+    popup.appendChild(header);
+
+    const promptLabel = document.createElement('label');
+    promptLabel.textContent = 'Prompt:';
+    popup.appendChild(promptLabel);
+
+    const promptTextarea = document.createElement('textarea');
+    promptTextarea.id = 'caliope-prompt'; // ID para acceder al textarea
+    promptTextarea.rows = 5;
+    promptTextarea.cols = 30;
+    popup.appendChild(promptTextarea);
+
+    const saveButton = document.createElement('button');
+    saveButton.textContent = 'Guardar';
+    saveButton.addEventListener('click', () => {
+        const prompt = shadow.getElementById('caliope-prompt').value;
+        // Usa chrome.runtime.sendMessage para comunicarte con background.js
+        chrome.runtime.sendMessage({ action: "guardarPrompt", prompt: prompt }, (response) => {
+            if (response.success) {
+                alert('Prompt guardado!');
+            } else {
+                alert('Error al guardar el prompt: ' + response.error);
+            }
+        });
+    });
+    popup.appendChild(saveButton);
+
+    // Añadir el popup al Shadow DOM
+    shadow.appendChild(popup);
+
+    // Lógica de arrastre
+    let offsetX, offsetY;
+    header.addEventListener('mousedown', (e) => {
+        offsetX = e.clientX - popup.offsetLeft;
+        offsetY = e.clientY - popup.offsetTop;
+
+        function drag(e) {
+            popup.style.left = (e.clientX - offsetX) + 'px';
+            popup.style.top = (e.clientY - offsetY) + 'px';
+        }
+
+        document.addEventListener('mousemove', drag);
+
+        document.addEventListener('mouseup', () => {
+            document.removeEventListener('mousemove', drag);
+        });
+    });
+
+    document.body.appendChild(popupContainer);
+
+}
