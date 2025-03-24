@@ -352,7 +352,7 @@ function injectShadowDom(){
     popup.appendChild(promptLabel);
 
     const promptTextarea = document.createElement('textarea');
-    promptTextarea.id = 'caliope-prompt'; // ID para acceder al textarea
+    promptTextarea.id = 'caliope-tono'; // ID para acceder al textarea
     promptTextarea.rows = 5;
     promptTextarea.cols = 30;
     promptTextarea.style.backgroundColor = '#fdf6f4';
