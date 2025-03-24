@@ -2,7 +2,7 @@ importScripts("config.js");
 importScripts("whisper.js");
 importScripts("openai.js");
 
-let tono = `
+let defaultTono = `
 
     Teniendo en cuenta lo siguiente:
 
@@ -54,11 +54,35 @@ let tono = `
 
 // Set Prompt
 
-async function setPropmtStorage(){
-    chrome.storage.local.set({tono:tono}), () => {
-        console.log("Tono almacenado correctamente");
+async function setPropmtStorage(tono = null){
+    if(tono != null){
+        chrome.storage.local.set({tono:tono}), () => {
+            console.log("Tono almacenado correctamente siendo el siguiente " + tono);
+        }
+    }
+    else{
+        chrome.storage.local.set({tono:defaultTono}), () => {
+            console.log("Tono almacenado correctamente siendo el siguiente " + tono);
+        }
     }
 }
+
+setPropmtStorage();
+
+async function getTonoStorage() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(["tono"], (result) => {
+            if (result.tono) {  // Simplificado: no necesitas comprobar .length > 0
+                console.log("Tono recogido del storage correctamente:", result.tono);
+                resolve(result.tono); // Resuelve la promesa CON EL VALOR DEL TONO
+            } else {
+                console.warn("⚠️ No se encontró un tono en el storage.");
+                resolve(null); // O resolve('') si prefieres una cadena vacía
+            }
+        });
+    });
+}
+
 
 
 /*
@@ -152,9 +176,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 transcribeAudio(audioBlob)
                     .then(async transcription => {
                         console.log("✅ Transcripción recibida:", transcription);
+                        tono = await getTonoStorage();
 
-                        const respuesta = await respuestaTonalizada(transcription);
-                        console.log("La respuesta tonalizada es");
+                        console.log("El tono es el siguiente "+ tono);
+
+                        const respuesta = await respuestaTonalizada(transcription,tono);
 
                         sendResponse({ transcription, respuesta });
                     })
@@ -218,6 +244,31 @@ chrome.action.onClicked.addListener((tab) => {
     });
 });
 
+
+
+// Listener de acciones del ShadowDOM
+
+chrome.runtime.onMessage.addListener((request,sender,sendResponde) => {
+    if(request.action === "guardarTono"){
+        if(request.tono){
+            console.log("Tono recibido");
+            
+            //guardar nuevo tono
+            setPropmtStorage(request.tono);
+            console.log("Tono guardado con éxito");
+            sendResponde({message: "todo correcto"});
+        }
+        else{
+            console.error("El tono no llego correctamente");
+            sendResponde({error:"Error al enviar el tono, no llego correctamente"})
+        }
+    }
+});
+
+
+
+
+
 // Funciones para inyectar dentro del ShadowDOM
 
 function injectShadowDom(){
@@ -275,26 +326,28 @@ function injectShadowDom(){
     header.textContent = 'Configuración de Caliope IA';
     popup.appendChild(header);
 
-    const promptLabel = document.createElement('label');
-    promptLabel.textContent = 'Prompt:';
-    popup.appendChild(promptLabel);
+    const tonoLabel = document.createElement('label');
+    tonoLabel.textContent = 'Tono de las respuestas:';
+    popup.appendChild(tonoLabel);
 
-    const promptTextarea = document.createElement('textarea');
-    promptTextarea.id = 'caliope-prompt'; // ID para acceder al textarea
-    promptTextarea.rows = 5;
-    promptTextarea.cols = 30;
-    popup.appendChild(promptTextarea);
+    const tonoTextArea = document.createElement('textarea');
+    tonoTextArea.id = 'caliope-tono'; // ID para acceder al textarea
+    tonoTextArea.rows = 5;
+    tonoTextArea.cols = 30;
+    popup.appendChild(tonoTextArea);
 
     const saveButton = document.createElement('button');
     saveButton.textContent = 'Guardar';
     saveButton.addEventListener('click', () => {
-        const prompt = shadow.getElementById('caliope-prompt').value;
+
+        tono = shadow.getElementById('caliope-tono').value;
+        console.log("El tono al enviar el botón es "+ tono);
         // Usa chrome.runtime.sendMessage para comunicarte con background.js
-        chrome.runtime.sendMessage({ action: "guardarPrompt", prompt: prompt }, (response) => {
-            if (response.success) {
-                alert('Prompt guardado!');
+        chrome.runtime.sendMessage({ action: "guardarTono", tono: tono }, (response) => {
+            if (!response.error) {
+                alert('tono guardado!');
             } else {
-                alert('Error al guardar el prompt: ' + response.error);
+                alert('Error al guardar el tono: ' + response.error);
             }
         });
     });
