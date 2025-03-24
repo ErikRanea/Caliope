@@ -143,6 +143,7 @@ async function respuestaTonalizada(transcripcion,tono) {
 
     const prompt = `
     Mejora la redacción de esta transcripción:"${transcripcion}".
+    Teniendo en cuenta las siguientes instrucciones
     ${tono}
     `;
 
