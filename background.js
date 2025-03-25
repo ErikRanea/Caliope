@@ -1,400 +1,389 @@
-importScripts("config.js");
-importScripts("whisper.js");
-importScripts("openai.js");
+let caliopeButton;
+let mediaRecorder;
+let audioChunks = [];
+let audioContext;
+let streamMicrofono;
+let isRecording = false;
+let isPaused = false;
+let isDeleted = false;
 
-let defaultTono = `
-
-    Teniendo en cuenta lo siguiente:
-
-    Mejorar la redacción de emails, mensajes de WhatsApp o notas a partir del contenido que yo te envíe o dicte.
-
-    ## Instrucciones específicas:
-
-    Al recibir un borrador, ofrece una versión mejorada cumpliendo estrictamente estos requisitos:
-
-    - **Claridad y naturalidad**: usa un lenguaje sencillo y natural, que no suene forzado. Además debe ser humano y fluido.
-    - **Tono**: directo y bien estructurado, con estilo business casual. Evita formalismos excesivos, tecnicismos o frases complicadas.
-    - **Evita** palabras sofisticadas o términos propios del lenguaje académico o jurídico.
-    - **No repitas** palabras o expresiones.
-    - **Reorganiza** el contenido siempre que mejore la estructura y fluidez.
-    - **Sin introducciones ni despedidas**; entrega únicamente el mensaje mejorado solicitado.
-    - **Nunca uses rayas largas (— o em dashes)**. Sustitúyelas por comas, paréntesis o reorganización adecuada. 
-    - **Guiones cortos (-)** únicamente en palabras compuestas o casos estrictamente necesarios.
-
-    ## Idioma de respuesta:
-
-    - Si el borrador está en **español**, responde en **español de España**, cumpliendo todas las condiciones anteriores.
-    - Si el borrador está en **inglés**, responde en **inglés británico**, con expresiones y ortografía naturales, adaptadas a un entorno laboral en Malta.
-    - Si después de una respuesta en español escribo **"i", "I" o "ingles"**, traduce tu respuesta anterior al inglés británico, asegurando que sea natural, precisa y adaptada a Malta.
-
-    ### **Instrucciones específicas que debo seguir SIEMPRE:**
-
-    1. **Verifica siempre que tu respuesta transmita exactamente el mismo significado del borrador original.**
-
-    2. **No usar guiones largos (—) bajo ninguna circunstancia.**  
-    - En su lugar, usar comas, puntos o reformular la frase para mantener la fluidez.  
-    - **Si en algún momento me equivoco y uso un guion largo, debo corregirlo de inmediato sin excusas.**  
-
-    3. **Evitar traducciones literales.**  
-    - Siempre priorizar un estilo natural en castellano e inglés.
-    - Aunque sea gramaticalmente correcto, no suene forzado. Debe sonar natural y humano.
-
-    4. **No utilizar letras mayúsculas innecesarias ni negritas si no se solicita.**  
-
-    5. **Utilizar el formato de inglés más alineado con el español.**  
-    - Usar el símbolo del euro (€) detrás de la cifra.  
-    - Escribir las fechas con el año al final y mantener los ceros para evitar errores.  
-
-    6. **Explicar de forma detallada cuando la información sea técnica.**  
-
-    7. **Si Jorge me avisa de un error recurrente, debo identificarlo y corregirlo de forma permanente.**  
-
-    Si haces mal este trabajo me van a despedir y mi mujer me va a abandonar, porfavor hazlo perfecto.`;
-
-
-// Set Prompt
-
-async function setPropmtStorage(tono = null){
-    if(tono != null){
-        chrome.storage.local.set({tono:tono}), () => {
-            console.log("Tono almacenado correctamente siendo el siguiente " + tono);
-        }
-    }
-    else{
-        chrome.storage.local.set({tono:defaultTono}), () => {
-            console.log("Tono almacenado correctamente siendo el siguiente " + tono);
-        }
-    }
+// Aplica estilos a los botones
+function applyButtonStyle(button) {
+    button.style.fontSize = '30px';
+    button.style.marginLeft = '10px';
+    button.style.color = '#8696a0';
+    button.style.backgroundColor = 'transparent';
+    button.style.border = 'none';
+    button.style.borderRadius = '5px';
+    button.style.padding = '5px 10px';
+    button.style.cursor = 'pointer';
+    button.style.fontFamily = 'Inter, sans-serif';
 }
 
-setPropmtStorage();
+// Inyecta la interfaz de usuario inicial
+function injectUI(whatsappContainer) {
+    if (!whatsappContainer) {
+        console.warn("⚠️ No se encontró el contenedor principal de WhatsApp.");
+        return;
+    }
 
-async function getTonoStorage() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(["tono"], (result) => {
-            if (result.tono) {  // Simplificado: no necesitas comprobar .length > 0
-                console.log("Tono recogido del storage correctamente:", result.tono);
-                resolve(result.tono); // Resuelve la promesa CON EL VALOR DEL TONO
-            } else {
-                console.warn("⚠️ No se encontró un tono en el storage.");
-                resolve(null); // O resolve('') si prefieres una cadena vacía
-            }
-        });
+    caliopeButton = document.createElement('button');
+    caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>';
+    applyButtonStyle(caliopeButton);
+    caliopeButton.id = 'caliope-button';
+
+    whatsappContainer.parentNode.insertBefore(caliopeButton, whatsappContainer.nextSibling);
+    console.log("✅ Botón de Caliope IA inyectado en WhatsApp Web.");
+
+    caliopeButton.addEventListener('click', () => {
+        caliopeButton.style.display = 'none';
+        createRecordingControls();
     });
 }
 
+// Crea los controles de grabación
+function createRecordingControls() {
+    let whatsappContainer = document.querySelector('._ak1r');
 
+    if (!whatsappContainer) {
+        console.warn("⚠️ No se encontró el contenedor principal de WhatsApp para los controles.");
+        return;
+    }
 
-/*
-let vectorBase = [];
+    const controlsContainer = document.createElement('div');
+    controlsContainer.id = 'caliope-controls-container';
+    controlsContainer.style.display = 'flex';
+    controlsContainer.style.alignItems = 'center';
+    controlsContainer.style.marginLeft = '10px';
 
-// Base de conocimientos (sin cambios)
-const baseConocimientos = [
-    "Nuestros cursos de inglés en Malta tienen diferentes precios según la duración y el nivel.",
-    "Ofrecemos alojamiento en residencias, familias anfitrionas y apartamentos compartidos.",
-    "Para viajar a Malta, los ciudadanos de la UE no necesitan visa, pero otros países sí.",
-    "Tenemos actividades extracurriculares como excursiones, deportes y eventos sociales.",
-    "El transporte público en Malta incluye autobuses y servicios de ferry.",
-    "Para inscribirse en un curso, se requiere un depósito inicial del 20%."
-];
-
-// Cargar `vectorBase` (sin cambios)
-async function cargarBaseDesdeStorage() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(["vectorBase"], (result) => {
-            if (result.vectorBase && result.vectorBase.length > 0) {
-                vectorBase = result.vectorBase;
-                console.log("✅ Base vectorizada cargada desde `chrome.storage`.");
-                resolve(true);
-            } else {
-                console.warn("⚠️ No se encontró una base vectorizada en `chrome.storage`. Se generará una nueva.");
-                resolve(false);
-            }
-        });
+    const trashButton = document.createElement('button');
+    trashButton.innerHTML = '<i class="bi bi-trash-fill"></i>';
+    applyButtonStyle(trashButton);
+    trashButton.addEventListener('click', () => {
+        console.log("El botón de basura se ha seleccionado");
+        isDeleted = true;
+        stopRecording(true);
+        controlsContainer.remove();
+        caliopeButton.style.display = 'inline-block';
     });
-}
 
-// Vectorizar y almacenar (sin cambios)
-/*
-async function vectorizarBaseConocimientos() {
-    console.log("🛠️ Iniciando vectorización de la base de conocimientos...");
+    const audioWaves = document.createElement('div');
+    audioWaves.id = 'caliope-audio-waves';
+    audioWaves.style.width = '80px';
+    audioWaves.style.height = '20px';
+    audioWaves.style.backgroundColor = '#7c8c95';
+    audioWaves.style.display = 'flex';
+    audioWaves.style.borderRadius = '3px';
+    audioWaves.style.padding = '5px 0px';
+    audioWaves.style.alignItems = 'center';
+    audioWaves.style.justifyContent = 'center';
 
-    let nuevaVectorizacion = [];
-    for (let tema of baseConocimientos) {
-        try {
-            const embedding = await obtenerEmbeddings(tema);
-            nuevaVectorizacion.push({ texto: tema, embedding: embedding });
-        } catch (error) {
-            console.error(`🚨 Error al vectorizar "${tema}":`, error);
-        }
+    const waves = [];
+    for (let i = 0; i < 5; i++) {
+        const wave = document.createElement('div');
+        wave.classList.add('caliope-wave');
+        wave.style.width = '5px';
+        wave.style.margin = '0 2px';
+        wave.style.backgroundColor = '#202c33';
+        audioWaves.appendChild(wave);
+        waves.push(wave);
     }
 
-
-    if (nuevaVectorizacion.length > 0) {
-        vectorBase = nuevaVectorizacion;
-        chrome.storage.local.set({ vectorBase: vectorBase }, () => {
-            console.log("✅ Base vectorizada almacenada en `chrome.storage`.");
-        });
-    } else {
-        console.error("❌ Error: No se pudo generar una base de conocimientos vectorizada.");
-    }
-}
-*/
-// Inicializar base (sin cambios)
-/*
-async function inicializarBase() {
-    const existeEnStorage = await cargarBaseDesdeStorage();
-    if (!existeEnStorage) {
-        console.log("🔄 Recalculando embeddings...");
-        await vectorizarBaseConocimientos();
-    }
-}
-
-inicializarBase();
-*/
-// Manejo de mensajes entrantes (con LOGS)
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("📩 Mensaje recibido en `background.js`:", request.action, request); // LOG COMPLETO
-
-    if (request.action === "transcribeAudio") {
-        // ... (lógica de transcripción, sin cambios importantes aquí) ...
-         if (request.audioData) {
-            console.log("🔍 Convirtiendo Base64 en Blob...");
-
-            try {
-                const byteCharacters = atob(request.audioData.split(',')[1]);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const audioBlob = new Blob([byteArray], { type: "audio/webm" });
-
-                console.log("📂 Archivo de audio reconstruido:", audioBlob);
-                console.log("📏 Tamaño reconstruido:", audioBlob.size, "bytes");
-
-                transcribeAudio(audioBlob)
-                    .then(async transcription => {
-                        console.log("✅ Transcripción recibida:", transcription);
-                        tono = await getTonoStorage();
-
-                        console.log("El tono es el siguiente "+ tono);
-
-                        const respuesta = await respuestaTonalizada(transcription,tono);
-
-                        sendResponse({ transcription, respuesta });
-                    })
-                    .catch(error => {
-                        console.error("🚨 Error en la transcripción:", error);
-                        sendResponse({ error: error.message });
-                    });
-
-            } catch (error) {
-                console.error("❌ Error procesando audio:", error);
-                sendResponse({ error: "Error procesando el audio." });
-            }
-
-            return true; // Permite respuestas asíncronas
+    const pauseButton = document.createElement('button');
+    pauseButton.innerHTML = '<i class="bi bi-pause"></i>';
+    applyButtonStyle(pauseButton);
+    pauseButton.addEventListener('click', () => {
+        console.log("Se ha seleccionado el botón de pausa");
+        if (isPaused) {
+            console.log("Reanudando grabación");
+            mediaRecorder.resume();
+            pauseButton.innerHTML = '<i class="bi bi-pause"></i>';
+            updateAudioWaves();
         } else {
-            console.error("❌ No se recibió audio en la solicitud.");
-            sendResponse({ error: "No se recibió audio válido." });
+            console.log("Pausando grabación");
+            mediaRecorder.pause();
+            pauseButton.innerHTML = '<i class="bi bi-play"></i>';
         }
-    }
-/*
-    if (request.action === "regenerarVectorBase") {
-        // ... (lógica de regeneración, sin cambios) ...
-         console.log("🔄 Regenerando base de conocimientos...");
-        vectorizarBaseConocimientos().then(() => {
-            sendResponse({ status: "VectorBase regenerado correctamente." });
-        }).catch(error => {
-            console.error("❌ Error regenerando la base vectorizada:", error);
-            sendResponse({ error: "No se pudo regenerar VectorBase." });
-        });
-
-        return true;
-    }
-
-    if (request.action === "reformularMensaje") {
-        console.log("Reformulando el mensaje (background.js):", request.mensaje); // LOG del mensaje original
-        reformularMensaje(request.mensaje)
-            .then((response) => {
-                console.log("El mensaje ha sido reformulado con éxito (background.js):", response); // LOG de la respuesta
-                sendResponse({ reformulado: response });
-            })
-            .catch((error) => {
-                console.error("Hubo un error al reformular el mensaje (background.js):", error);
-                sendResponse({ error: "Error al reformular el mensaje: " + error.message });
-            });
-
-        return true; // MUY IMPORTANTE
-    }
-        */
-});
-
-
-//--------------------------------------------------------------------------
-
-//Crear popup
-
-chrome.action.onClicked.addListener((tab) => {
-    console.log("Botón de la extensión presionado");
-    chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: injectShadowDom, // Inyecta una función, no un archivo
+        isPaused = !isPaused;
     });
-});
 
+    const stopButton = document.createElement('button');
+    stopButton.innerHTML = '<i class="bi bi-stop-fill"></i>';
+    applyButtonStyle(stopButton);
+    stopButton.addEventListener('click', () => {
+        stopRecording(false, () => {
+            isDeleted = false;
+            console.log("El valor de isDeleted es " + isDeleted);
+            controlsContainer.remove();
+            caliopeButton.style.display = 'inline-block';
+        });
+    });
 
+    controlsContainer.appendChild(trashButton);
+    controlsContainer.appendChild(audioWaves);
+    controlsContainer.appendChild(pauseButton);
+    controlsContainer.appendChild(stopButton);
 
-// Listener de acciones del ShadowDOM
+    let whatsappContainerToControl = document.querySelector('._ak1r');
 
-chrome.runtime.onMessage.addListener((request,sender,sendResponde) => {
-    if(request.action === "guardarTono"){
-        if(request.tono){
-            console.log("Tono recibido");
+    if (!whatsappContainerToControl) {
+        console.warn("⚠️ No se encontró el contenedor principal de WhatsApp para los controles.");
+        return;
+    }
+
+    whatsappContainerToControl.parentNode.insertBefore(controlsContainer, whatsappContainerToControl.nextSibling);
+    startRecording(waves, audioWaves);
+}
+
+// Inicia la grabación de audio
+async function startRecording(waves, audioWaves) {
+    const permissionGranted = await requestMicrophonePermission();
+    if (!permissionGranted) return;
+
+    try {
+        console.log("🎤 Iniciando grabación de audio...");
+        streamMicrofono = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(streamMicrofono, { mimeType: "audio/webm;codecs=opus" });
+        audioChunks = [];
+
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(streamMicrofono);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        source.connect(analyser);
+
+        function updateAudioWaves() {
+            if(!isPaused){
+                    analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / bufferLength;
+                const normalizedValue = average / 128;
+                const maxHeight = 20;
+
+                for (let i = 0; i < waves.length; i++) {
+                    waves[i].style.height = `${normalizedValue * maxHeight}px`;
+                }
+                requestAnimationFrame(updateAudioWaves);
+            }
             
-            //guardar nuevo tono
-            setPropmtStorage(request.tono);
-            console.log("Tono guardado con éxito");
-            sendResponde({message: "todo correcto"});
         }
-        else{
-            console.error("El tono no llego correctamente");
-            sendResponde({error:"Error al enviar el tono, no llego correctamente"})
+
+        updateAudioWaves();
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+          if (!isDeleted) {
+            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+
+            reader.onloadend = () => {
+              console.log("🚀 Enviando audio al background.js...");
+              chrome.runtime.sendMessage(
+                { action: "transcribeAudio", audioData: reader.result },
+                (response) => {
+                  if (response && response.transcription) {
+                      // Enviar la transcripción y la respuesta al background.js
+                      chrome.runtime.sendMessage({
+                          action: "mostrarResultados",
+                          transcription: response.transcription,
+                          respuesta: response.respuesta
+                      });
+                  }
+                }
+              );
+            };
+          }
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        console.log("Iniciando grabación del mediaRecorder");
+    } catch (error) {
+        console.error("❌ Error al acceder al micrófono:", error);
+        alert("Ocurrió un error al intentar acceder al micrófono.");
+    }
+}
+
+// Detiene la grabación de audio
+function stopRecording(liberarMicrofono = false, callback = () => {}) {
+    console.log("Entrando en stopRecording");
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        console.log("🎤 Deteniendo grabación de audio...");
+        mediaRecorder.stop();
+        isRecording = false;
+
+        if (streamMicrofono) {
+            streamMicrofono.getTracks().forEach(track => track.stop());
+            streamMicrofono = null;
+            console.log("🎤 Micrófono liberado.");
         }
+        if (audioContext) {
+            audioContext.close().then(() => {
+                console.log("Audio context closed");
+            }).catch(error => {
+                console.error("Error closing audio context:", error);
+            });
+            audioContext = null;
+        }
+        audioChunks = [];
+        callback();
+    }
+}
+
+// Solicita permiso para usar el micrófono
+async function requestMicrophonePermission() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+        console.log("✅ Permiso de micrófono concedido.");
+        return true;
+    } catch (error) {
+        console.error("❌ Permiso de micrófono denegado:", error);
+        alert("Permiso de micrófono denegado.  Actívalo en la configuración del navegador.");
+        return false;
+    }
+}
+
+// Inserta texto en el área de entrada de WhatsApp (usa execCommand)
+function insertText(text) {
+    const textarea = document.querySelector("div[aria-label='Escribe un mensaje'][contenteditable='true']");
+
+    if (textarea) {
+        textarea.focus();
+
+        // --- Simular Ctrl+A (o Cmd+A) ---
+        const selectAllEvent = new KeyboardEvent('keydown', {
+            key: 'a',
+            code: 'KeyA',
+            keyCode: 65,
+            which: 65,
+            ctrlKey: !navigator.userAgentData.platform.includes('mac'), // Ctrl para Windows/Linux
+            metaKey: navigator.userAgentData.platform.includes('mac'), // Cmd para Mac
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+        });
+        textarea.dispatchEvent(selectAllEvent);
+        // ---------------------------------
+
+        document.execCommand('insertText', false, text);
+        console.log("Se ha insertado el siguiente texto en el textarea ->"+ text);
+
+        // --- Ya NO necesitamos disparar el evento 'input' manualmente ---
+        // --- Ya NO necesitamos manipular el DOM ---
+
+       // injectReformular(textarea); //Pasamos el textarea
+
+    } else {
+        console.error("❌ No se encontró el textarea del chat.");
+    }
+}
+
+// Estilos CSS
+const style = document.createElement('style');
+style.textContent = `
+    @import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css");
+
+    .caliope-wave {
+        width: 5px;
+        height: 20px;
+        background-color: #00a884;
+        border-radius: 5px;
+    }
+`;
+document.head.appendChild(style);
+
+// Observa y reinyecta la UI
+function observeAndInject() {
+    setInterval(() => {
+        let whatsappContainer = document.querySelector('._ak1r');
+        let botonCaliope = document.getElementById('caliope-button');
+        if (whatsappContainer && !botonCaliope) {
+            injectUI(whatsappContainer);
+        }
+    }, 100);
+}
+
+observeAndInject();
+
+// Escucha los mensajes del background script
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log("📩 Mensaje recibido en `content.js`:", request.action, request);
+
+    if (request.action === "createDraggablePopup") {
+        createDraggableCaliopePopup();
+    }
+
+    if (request.action === "mostrarResultados") {
+        mostrarResultados(request.transcription, request.respuesta);
     }
 });
 
+function createDraggableCaliopePopup() {
+    // Agrega un ID único al contenedor para verificar si ya existe.
+    const popupId = 'caliope-draggable-popup';
 
-
-
-
-// Funciones para inyectar dentro del ShadowDOM
-
-function injectShadowDom(){
-
-    const popupId = 'caliope-ShadowDom';
-
-    function removeExistinPopup(){
+    // Función para evitar duplicados
+    function removeExistingPopup() {
         const existingPopup = document.getElementById(popupId);
-        if(existingPopup){
+        if (existingPopup) {
             existingPopup.remove();
         }
     }
 
+    // Antes de crear uno nuevo, verifica y elimina el popup existente.
+    removeExistingPopup();
 
-    removeExistinPopup();
-
-
-    // LÓGICA DE CREACIÓN DEL SHADODOM
-
+    // Crear el contenedor del popup
     const popupContainer = document.createElement('div');
     popupContainer.id = popupId;
 
     // Crear el Shadow DOM
     const shadow = popupContainer.attachShadow({ mode: 'open' });
 
-    // Estilos CSS para el popup (dentro del Shadow DOM)
-    const style = document.createElement('style');
-    style.textContent = `
-        .popup {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 300px;
-            background-color:rgb(221, 221, 221);
-            border-radius: 5px;
-            padding: 10px;
-            z-index: 1000;
-        }
-        .header {
-            font-family: Dragon, sans-serif;
-            color:rgb(40, 40, 40);
-            font-size: 40px;
-            margin-bottom: 10px;
-            cursor: move;
-
-        }
-        /* Agrega más estilos aquí */
-    `;
-    shadow.appendChild(style);
+    // Crear un elemento link para cargar el CSS
+    const linkElem = document.createElement('link');
+    linkElem.setAttribute('rel', 'stylesheet');
+    linkElem.setAttribute('href', chrome.runtime.getURL('popup.css')); // Reemplaza con la URL de tu archivo CSS
+    shadow.appendChild(linkElem);
 
     // Crear el HTML del popup
     const popup = document.createElement('div');
     popup.classList.add('popup'); // Usamos una clase para aplicar los estilos
 
-    // Importar la tipografía desde una carpeta
-    const fontStyle = document.createElement('style');
-    fontStyle.textContent = `
-        @font-face {
-            font-family: 'Dragon';
-            src: url('./fonts/Dragon-Regular.otf') format('OpenType'),
-            font-weight: normal;
-            font-style: normal;
-        }
-    `;
-    shadow.appendChild(fontStyle);
     const header = document.createElement('div');
     header.classList.add('header');
-    header.textContent = 'Caliope IA   |   Configuración';
-    header.style.padding = '10px 0px 10px 10px';
-
+    header.textContent = 'Caliope IA | Configuración';
     popup.appendChild(header);
 
-
     const promptLabel = document.createElement('label');
-    promptLabel.textContent = 'Tono del mensaje';
-    promptLabel.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
-    promptLabel.style.fontFamily = '"Inter", sans-serif';
-    promptLabel.style.fontSize = '14px'; // Cambia el tamaño de la fuente
-    promptLabel.style.padding = '10px 0px 5px 10px';
-
+    promptLabel.textContent = 'Prompt:';
     popup.appendChild(promptLabel);
 
     const promptTextarea = document.createElement('textarea');
-    promptTextarea.id = 'caliope-tono'; // ID para acceder al textarea
+    promptTextarea.id = 'caliope-prompt'; // ID para acceder al textarea
     promptTextarea.rows = 5;
     promptTextarea.cols = 30;
-    promptTextarea.style.backgroundColor = '#fdf6f4';
-    promptTextarea.style.borderRadius = '5px';
-    promptTextarea.placeholder = 'Un tono directo y bien estructurado, con estilo business casual...';
-    promptTextarea.style.padding = '5px 5px';
-    promptTextarea.style.border = 'none';
-    promptTextarea.style.fontFamily = '"Inter", sans-serif';
-    promptTextarea.style.fontSize = '14px';
-    promptTextarea.style.resize = 'none'; // Deshabilitar el redimensionamiento
-    promptTextarea.style.boxSizing = 'border-box'; // Asegura que el padding no afecte al tamaño total
-    promptTextarea.style.width = '270px'; // Asegura que el textarea ocupe todo el ancho disponible
-    promptTextarea.style.margin = '10px'; // Añadir padding interno
-    promptTextarea.style.fontFamily = '"Inter", sans-serif'; // Cambia la fuente a Inter
-    promptTextarea.style.fontSize = '14px'; // Cambia el tamaño de la fuente
-    promptTextarea.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
-    
     popup.appendChild(promptTextarea);
 
     const saveButton = document.createElement('button');
-    saveButton.textContent = 'GUARDAR';
-    saveButton.style.backgroundColor = 'rgb(40, 40, 40)'; // Cambia el color de fondo
-    saveButton.style.color = 'white'; // Cambia el color del texto
-    saveButton.style.border = 'none'; // Sin borde
-    saveButton.style.borderRadius = '8px'; // Bordes redondeados
-    saveButton.style.padding = '8px 16px'; // Espaciado interno
-    saveButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
-    saveButton.style.fontFamily = 'Dragon, sans-serif'; // Cambia la fuente a Inter
-    saveButton.style.fontSize = '25px'; // Cambia el tamaño de la fuente
-    saveButton.style.margin = '0px 0px 0px 10px'; // Añadir margen superior
+    saveButton.textContent = 'Guardar';
     saveButton.addEventListener('click', () => {
-
-        tono = shadow.getElementById('caliope-tono').value;
-        console.log("El tono al enviar el botón es "+ tono);
-        // Usa chrome.runtime.sendMessage para comunicarte con background.js
-        chrome.runtime.sendMessage({ action: "guardarTono", tono: tono }, (response) => {
-            if (!response.error) {
-                alert('tono guardado!');
-            } else {
-                alert('Error al guardar el tono: ' + response.error);
-            }
-        });
+        const prompt = shadow.getElementById('caliope-prompt').value;
+        localStorage.setItem('caliopePrompt', prompt);
+        alert('Prompt guardado!');
     });
     popup.appendChild(saveButton);
 
@@ -419,6 +408,124 @@ function injectShadowDom(){
         });
     });
 
-    document.body.appendChild(popupContainer);
+    // Inicializar el prompt desde localStorage
+    const storedPrompt = localStorage.getItem('caliopePrompt');
+    if (storedPrompt) {
+        shadow.getElementById('caliope-prompt').value = storedPrompt;
+    }
 
+    // Finalmente, añade el popup al DOM.
+    document.body.appendChild(popupContainer);
 }
+
+// Función para mostrar los resultados en un nuevo popup
+function mostrarResultados(transcription, respuesta) {
+    console.log("mostrarResultados se está ejecutando en content.js");
+    // Agrega un ID único al contenedor para verificar si ya existe.
+    const popupResultId = 'caliope-resultados-popup';
+
+    // Función para evitar duplicados
+    function removeExistingPopup() {
+        const existingPopup = document.getElementById(popupResultId);
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+    }
+
+    // Antes de crear uno nuevo, verifica y elimina el popup existente.
+    removeExistingPopup();
+
+    // Crear el contenedor del popup
+    const popupContainer = document.createElement('div');
+    popupContainer.id = popupResultId;
+
+    // Crear el Shadow DOM
+    const shadow = popupContainer.attachShadow({ mode: 'open' });
+
+    // Crear un elemento link para cargar el CSS
+    const linkElem = document.createElement('link');
+    linkElem.setAttribute('rel', 'stylesheet');
+    linkElem.setAttribute('href', chrome.runtime.getURL('popup.css')); // Reemplaza con la URL de tu archivo CSS
+    shadow.appendChild(linkElem);
+
+    // Crear el HTML del popup
+    const popup = document.createElement('div');
+    popup.classList.add('popup');
+
+    const header = document.createElement('div');
+    header.classList.add('header');
+    header.textContent = 'Resultados de Caliope IA';
+    popup.appendChild(header);
+
+    const transcriptionDiv = document.createElement('div');
+    transcriptionDiv.classList.add('content');
+    transcriptionDiv.innerHTML = `<p><strong>Transcripción:</strong></p><p>${transcription}</p>`;
+    popup.appendChild(transcriptionDiv);
+
+    const respuestaDiv = document.createElement('div');
+    respuestaDiv.classList.add('content');
+    respuestaDiv.innerHTML = `<p><strong>Respuesta:</strong></p><p>${respuesta}</p>`;
+    popup.appendChild(respuestaDiv);
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.classList.add('button-container');
+
+    const copiarButton = document.createElement('button');
+    copiarButton.textContent = 'Copiar Respuesta';
+    copiarButton.addEventListener('click', () => {
+        navigator.clipboard.writeText(respuesta).then(() => {
+            alert('Respuesta copiada al portapapeles!');
+        });
+    });
+    buttonContainer.appendChild(copiarButton);
+    popup.appendChild(buttonContainer);
+
+    // Añadir el popup al Shadow DOM
+    shadow.appendChild(popup);
+
+    // Lógica de arrastre
+    let offsetX, offsetY;
+    header.addEventListener('mousedown', (e) => {
+        offsetX = e.clientX - popup.offsetLeft;
+        offsetY = e.clientY - popup.offsetTop;
+
+        function drag(e) {
+            popup.style.left = (e.clientX - offsetX) + 'px';
+            popup.style.top = (e.clientY - offsetY) + 'px';
+        }
+
+        document.addEventListener('mousemove', drag);
+
+        document.addEventListener('mouseup', () => {
+            document.removeEventListener('mousemove', drag);
+        });
+    });
+
+    // Finalmente, añade el popup al DOM
+    document.body.appendChild(popupContainer);
+}
+
+// Inject button
+function injectButton() {
+    console.log("Intentando inyectar el botón...");
+    const target = document.querySelector('div.x78zum5.x6s0dn4.x1afcbsf.x6s6g2w');
+
+    if (target) {
+        console.log("✅ Elemento objetivo encontrado.");
+        const button = document.createElement('button');
+        button.textContent = 'Caliope IA Config';
+        button.classList.add('xjb2p0i', 'xk390pu', 'x1heor9g', 'x1ypdohk', 'xjbqb8w', 'x972fbf', 'xcfux6l', 'x1qhh985', 'xm0m39n', 'xexx8yu', 'x4uap5', 'x18d9i69', 'xkhd6sd'); // Clases de WhatsApp
+
+        button.addEventListener('click', () => {
+            createDraggableCaliopePopup();
+        });
+
+        target.appendChild(button);
+        console.log("✅ Botón inyectado correctamente.");
+    } else {
+        console.log('Target not found, retrying');
+        setTimeout(injectButton, 1000);
+    }
+}
+
+setTimeout(injectButton, 1000);
