@@ -407,7 +407,11 @@ function injectShadowDom(){
         offsetX = e.clientX - popup.offsetLeft;
         offsetY = e.clientY - popup.offsetTop;
 
+        console.log("El ancho de la ventana es "+window.innerWidht);
+
         function drag(e) {
+
+            
             popup.style.left = (e.clientX - offsetX) + 'px';
             popup.style.top = (e.clientY - offsetY) + 'px';
         }
