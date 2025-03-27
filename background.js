@@ -426,8 +426,16 @@ function injectShadowDom(){
         offsetY = e.clientY - popup.offsetTop;
 
         function drag(e) {
-            popup.style.left = (e.clientX - offsetX) + 'px';
-            popup.style.top = (e.clientY - offsetY) + 'px';
+            // Límite de la posición del popup (sin desbordar la ventana)
+            let newX = e.clientX - offsetX;
+            let newY = e.clientY - offsetY;
+
+            // Evitar que el popup se mueva fuera de la ventana
+            newX = Math.max(0, Math.min(newX, window.innerWidth - popup.offsetWidth));
+            newY = Math.max(0, Math.min(newY, window.innerHeight - popup.offsetHeight));
+
+            popup.style.left = newX + 'px';
+            popup.style.top = newY + 'px';
         }
 
         document.addEventListener('mousemove', drag);
