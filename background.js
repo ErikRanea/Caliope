@@ -304,17 +304,18 @@ function injectShadowDom(){
             width: 300px;
             background-color:rgb(221, 221, 221);
             border-radius: 5px;
-            padding: 10px;
             z-index: 1000;
         }
         .header {
-            font-family: Dragon, sans-serif;
+            font-family: Inter, sans-serif;
             color:rgb(40, 40, 40);
             font-size: 40px;
             margin-bottom: 10px;
             cursor: move;
-
-        }
+            letter-spacing: -0.06em; /* Espaciado entre letras */
+            font-size: 20px; /* Cambia el tamaño de la fuente */
+            font-weight: 600; /* Cambia el grosor de la fuente */
+                    }
         /* Agrega más estilos aquí */
     `;
     shadow.appendChild(style);
@@ -325,29 +326,28 @@ function injectShadowDom(){
 
     // Importar la tipografía desde una carpeta
     const fontStyle = document.createElement('style');
-    fontStyle.textContent = `
-        @font-face {
-            font-family: 'Dragon';
-            src: url('./fonts/Dragon-Regular.otf') format('OpenType'),
-            font-weight: normal;
-            font-style: normal;
-        }
-    `;
+    
     shadow.appendChild(fontStyle);
     const header = document.createElement('div');
     header.classList.add('header');
     header.textContent = 'Caliope IA   |   Configuración';
-    header.style.padding = '10px 0px 10px 10px';
+    header.style.padding = '15px 10px 5px 20px';
 
     popup.appendChild(header);
 
+    const linea = document.createElement('div');
+    linea.style.border = '1px solid rgb(40, 40, 40)'; // Cambia el color de la línea
+    linea.style.width = '100%'; // Ancho completo
+    linea.style.margin = '5px 0px 10px 0px'; // Sin margen
+    popup.appendChild(linea);
 
     const promptLabel = document.createElement('label');
     promptLabel.textContent = 'Tono del mensaje';
     promptLabel.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
     promptLabel.style.fontFamily = '"Inter", sans-serif';
     promptLabel.style.fontSize = '14px'; // Cambia el tamaño de la fuente
-    promptLabel.style.padding = '10px 0px 5px 10px';
+    promptLabel.style.padding = '10px 10px 15px 20px';
+    promptLabel.style.letterSpacing = '-0.03em'; // Espaciado entre letras
 
     popup.appendChild(promptLabel);
 
@@ -365,7 +365,7 @@ function injectShadowDom(){
     promptTextarea.style.resize = 'none'; // Deshabilitar el redimensionamiento
     promptTextarea.style.boxSizing = 'border-box'; // Asegura que el padding no afecte al tamaño total
     promptTextarea.style.width = '270px'; // Asegura que el textarea ocupe todo el ancho disponible
-    promptTextarea.style.margin = '10px'; // Añadir padding interno
+    promptTextarea.style.margin = '20px'; // Añadir padding interno
     promptTextarea.style.fontFamily = '"Inter", sans-serif'; // Cambia la fuente a Inter
     promptTextarea.style.fontSize = '14px'; // Cambia el tamaño de la fuente
     promptTextarea.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
@@ -373,15 +373,17 @@ function injectShadowDom(){
     popup.appendChild(promptTextarea);
 
     const saveButton = document.createElement('button');
-    saveButton.textContent = 'GUARDAR';
+    saveButton.textContent = 'Guardar';
     saveButton.style.backgroundColor = 'rgb(40, 40, 40)'; // Cambia el color de fondo
     saveButton.style.color = 'white'; // Cambia el color del texto
     saveButton.style.border = 'none'; // Sin borde
     saveButton.style.borderRadius = '8px'; // Bordes redondeados
     saveButton.style.padding = '8px 16px'; // Espaciado interno
     saveButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
-    saveButton.style.fontFamily = 'Dragon, sans-serif'; // Cambia la fuente a Inter
-    saveButton.style.fontSize = '25px'; // Cambia el tamaño de la fuente
+    saveButton.style.fontFamily = 'Inter, sans-serif'; // Cambia la fuente a Inter
+    saveButton.style.letterSpacing = '-0.06em'; // Espaciado entre letras
+    saveButton.style.fontSize = '15px'; // Cambia el tamaño de la fuente
+    saveButton.style.fontWeight = '600'; // Cambia el grosor de la fuente
     saveButton.style.margin = '0px 0px 0px 10px'; // Añadir margen superior
     saveButton.addEventListener('click', () => {
 
@@ -398,6 +400,22 @@ function injectShadowDom(){
     });
     popup.appendChild(saveButton);
 
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'X';
+    closeButton.style.fontFamily = 'Inter, sans-serif'; // Cambia la fuente a Inter
+    closeButton.style.backgroundColor = 'rgb(40, 40, 40)'; // Color del texto
+    closeButton.style.color = 'white'; // Color del texto
+    closeButton.style.borderRadius = '5px'; // Bordes redondeados
+    closeButton.style.fontSize = '20px'; // Tamaño de la fuente
+    closeButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
+    closeButton.style.position = 'absolute'; // Posición absoluta
+    closeButton.style.top = '10px'; // Posición superior
+    closeButton.style.right = '10px'; // Posición derecha
+    closeButton.addEventListener('click', () => {
+        popupContainer.remove(); // Elimina el popup
+    });
+    popup.appendChild(closeButton);
+
     // Añadir el popup al Shadow DOM
     shadow.appendChild(popup);
 
@@ -410,6 +428,16 @@ function injectShadowDom(){
         console.log("El ancho de la ventana es "+window.innerWidht);
 
         function drag(e) {
+            // Límite de la posición del popup (sin desbordar la ventana)
+            let newX = e.clientX - offsetX;
+            let newY = e.clientY - offsetY;
+
+            // Evitar que el popup se mueva fuera de la ventana
+            newX = Math.max(0, Math.min(newX, window.innerWidth - popup.offsetWidth));
+            newY = Math.max(0, Math.min(newY, window.innerHeight - popup.offsetHeight));
+
+            popup.style.left = newX + 'px';
+            popup.style.top = newY + 'px';
 
             
             popup.style.left = (e.clientX - offsetX) + 'px';
