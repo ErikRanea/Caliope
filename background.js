@@ -425,8 +425,6 @@ function injectShadowDom(){
         offsetX = e.clientX - popup.offsetLeft;
         offsetY = e.clientY - popup.offsetTop;
 
-        console.log("El ancho de la ventana es "+window.innerWidht);
-
         function drag(e) {
             // Límite de la posición del popup (sin desbordar la ventana)
             let newX = e.clientX - offsetX;
@@ -438,10 +436,6 @@ function injectShadowDom(){
 
             popup.style.left = newX + 'px';
             popup.style.top = newY + 'px';
-
-            
-            popup.style.left = (e.clientX - offsetX) + 'px';
-            popup.style.top = (e.clientY - offsetY) + 'px';
         }
 
         document.addEventListener('mousemove', drag);
