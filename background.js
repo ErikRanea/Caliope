@@ -301,14 +301,14 @@ function injectShadowDom(){
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 300px;
-            background-color:rgb(221, 221, 221);
+            width: 320px;
+            background-color:rgb(202, 0, 98);
             border-radius: 5px;
             z-index: 1000;
         }
         .header {
             font-family: Inter, sans-serif;
-            color:rgb(40, 40, 40);
+            color:rgb(255, 255, 255);
             font-size: 40px;
             margin-bottom: 10px;
             cursor: move;
@@ -336,17 +336,17 @@ function injectShadowDom(){
     popup.appendChild(header);
 
     const linea = document.createElement('div');
-    linea.style.border = '1px solid rgb(40, 40, 40)'; // Cambia el color de la línea
-    linea.style.width = '100%'; // Ancho completo
+    linea.style.border = '1px solid rgb(255, 255, 255)'; // Cambia el color de la línea
+    linea.style.width = '316px'; // Ancho completo
     linea.style.margin = '5px 0px 10px 0px'; // Sin margen
     popup.appendChild(linea);
 
     const promptLabel = document.createElement('label');
     promptLabel.textContent = 'Tono del mensaje';
-    promptLabel.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
+    promptLabel.style.color = 'rgb(255, 255, 255)'; // Cambia el color del texto
     promptLabel.style.fontFamily = '"Inter", sans-serif';
     promptLabel.style.fontSize = '14px'; // Cambia el tamaño de la fuente
-    promptLabel.style.padding = '10px 10px 15px 20px';
+    promptLabel.style.padding = '10px 10px 10px 20px';
     promptLabel.style.letterSpacing = '-0.03em'; // Espaciado entre letras
 
     popup.appendChild(promptLabel);
@@ -355,9 +355,12 @@ function injectShadowDom(){
     promptTextarea.id = 'caliope-tono'; // ID para acceder al textarea
     promptTextarea.rows = 5;
     promptTextarea.cols = 30;
-    promptTextarea.style.backgroundColor = '#fdf6f4';
+    promptTextarea.style.backgroundColor = 'rgb(255, 255, 255)';
     promptTextarea.style.borderRadius = '5px';
     promptTextarea.placeholder = 'Un tono directo y bien estructurado, con estilo business casual...';
+    promptTextarea.style.setProperty('--placeholder-color', 'rgb(0, 0, 0)');
+    promptTextarea.style.color = 'var(--placeholder-color)';
+    promptTextarea.style.letterSpacing = '-0.05em'; // Espaciado entre letras
     promptTextarea.style.padding = '5px 5px';
     promptTextarea.style.border = 'none';
     promptTextarea.style.fontFamily = '"Inter", sans-serif';
@@ -368,23 +371,23 @@ function injectShadowDom(){
     promptTextarea.style.margin = '20px'; // Añadir padding interno
     promptTextarea.style.fontFamily = '"Inter", sans-serif'; // Cambia la fuente a Inter
     promptTextarea.style.fontSize = '14px'; // Cambia el tamaño de la fuente
-    promptTextarea.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
+    promptTextarea.style.color = 'black'; // Cambia el color del texto
     
     popup.appendChild(promptTextarea);
-
+    
     const saveButton = document.createElement('button');
     saveButton.textContent = 'Guardar';
-    saveButton.style.backgroundColor = 'rgb(40, 40, 40)'; // Cambia el color de fondo
-    saveButton.style.color = 'white'; // Cambia el color del texto
+    saveButton.style.backgroundColor = 'rgb(255, 255, 255)'; // Cambia el color de fondo
+    saveButton.style.color = 'rgb(202, 0, 98)'; // Cambia el color del texto
     saveButton.style.border = 'none'; // Sin borde
     saveButton.style.borderRadius = '8px'; // Bordes redondeados
-    saveButton.style.padding = '8px 16px'; // Espaciado interno
+    saveButton.style.padding = '8px 20px'; // Espaciado interno
     saveButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
     saveButton.style.fontFamily = 'Inter, sans-serif'; // Cambia la fuente a Inter
     saveButton.style.letterSpacing = '-0.06em'; // Espaciado entre letras
     saveButton.style.fontSize = '15px'; // Cambia el tamaño de la fuente
     saveButton.style.fontWeight = '600'; // Cambia el grosor de la fuente
-    saveButton.style.margin = '0px 0px 0px 10px'; // Añadir margen superior
+    saveButton.style.margin = '0px 0px 20px 20px'; // Añadir margen superior
     saveButton.addEventListener('click', () => {
 
         tono = shadow.getElementById('caliope-tono').value;
@@ -429,11 +432,9 @@ function injectShadowDom(){
             // Límite de la posición del popup (sin desbordar la ventana)
             let newX = e.clientX - offsetX;
             let newY = e.clientY - offsetY;
-
             // Evitar que el popup se mueva fuera de la ventana
             newX = Math.max(0, Math.min(newX, window.innerWidth - popup.offsetWidth));
             newY = Math.max(0, Math.min(newY, window.innerHeight - popup.offsetHeight));
-
             popup.style.left = newX + 'px';
             popup.style.top = newY + 'px';
         }
