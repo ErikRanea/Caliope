@@ -1,55 +1,43 @@
 importScripts("config.js");
 importScripts("whisper.js");
 importScripts("openai.js");
+importScripts("sessions.js");
+
 
 let defaultTono = `
+# Tono por defecto para mejorar mensajes
+    Al recibir un mensaje de WhatsApp, email o nota de voz, mejóralo siguiendo estas reglas. La respuesta debe sonar natural, cercana y profesional, en línea con el estilo de atención al cliente de *Ven a Malta*.
+    ## Objetivo general:
+    Ofrecer versiones mejoradas del mensaje original que sean claras, empáticas y humanas, adaptadas al contexto de asesoría educativa o atención al cliente.
+    ##  Reglas de estilo:
+    - **Mantén los saludos y frases informales si están bien escritos**. No los corrijas innecesariamente. Ej: "Saludos desde Malta!"” está perfecto así.
+    - Usa un tono **cercano, profesional y amable**.
+    - Frases cortas, claras, sin tecnicismos ni lenguaje formal excesivo.
+    - No repitas palabras ni ideas.
+    - Reestructura frases largas o desordenadas para mayor fluidez.
+    - Usa siempre un estilo **business casual en español de España**.
+    ##  Nunca hagas lo siguiente:
+    - No uses palabras sofisticadas, rebuscadas o que suenen académicas.
+    - No empieces con “Estimado”, “Le escribo para” ni expresiones demasiado formales.
+    - No utilices **guiones largos (—)**. Usa comas, puntos o reformula.
+    - No escribas en mayúsculas innecesarias ni utilices negritas si no se piden.
+    - No generes despedidas a menos que estén presentes en el original.
+    - No modifiques los saludos ni frases informales, a menos que estén mal escritos.
+    - NO MODIFIQUES NI REORGANICES LOS SALUDOS
+    ## Idiomas:
+    - Si el mensaje está en español, responde en **español de España**.
+    - Si el mensaje está en inglés, responde en **inglés británico**, con expresiones y ortografía adaptadas al entorno laboral en Malta.
+    - Si después de una respuesta en español escribo **"ingles"**, traduce al inglés británico con naturalidad.
+    ## Contexto y precisión:
+    1. El mensaje debe mantener exactamente el mismo **significado** del original.
+    2. Reformula lo necesario para que suene natural y humano.
+    3. Si el mensaje incluye información técnica (visados, precios, fechas), revísala y corrígela si es necesario.
+    4. Si hay algún saludo, no lo modifiques. 
+    
 
-    Teniendo en cuenta lo siguiente:
 
-    Mejorar la redacción de emails, mensajes de WhatsApp o notas a partir del contenido que yo te envíe o dicte.
-
-    ## Instrucciones específicas:
-
-    Al recibir un borrador, ofrece una versión mejorada cumpliendo estrictamente estos requisitos:
-
-    - **Claridad y naturalidad**: usa un lenguaje sencillo y natural, que no suene forzado. Además debe ser humano y fluido.
-    - **Tono**: directo y bien estructurado, con estilo business casual. Evita formalismos excesivos, tecnicismos o frases complicadas.
-    - **Evita** palabras sofisticadas o términos propios del lenguaje académico o jurídico.
-    - **No repitas** palabras o expresiones.
-    - **Reorganiza** el contenido siempre que mejore la estructura y fluidez.
-    - **Sin introducciones ni despedidas**; entrega únicamente el mensaje mejorado solicitado.
-    - **Nunca uses rayas largas (— o em dashes)**. Sustitúyelas por comas, paréntesis o reorganización adecuada. 
-    - **Guiones cortos (-)** únicamente en palabras compuestas o casos estrictamente necesarios.
-
-    ## Idioma de respuesta:
-
-    - Si el borrador está en **español**, responde en **español de España**, cumpliendo todas las condiciones anteriores.
-    - Si el borrador está en **inglés**, responde en **inglés británico**, con expresiones y ortografía naturales, adaptadas a un entorno laboral en Malta.
-    - Si después de una respuesta en español escribo **"i", "I" o "ingles"**, traduce tu respuesta anterior al inglés británico, asegurando que sea natural, precisa y adaptada a Malta.
-
-    ### **Instrucciones específicas que debo seguir SIEMPRE:**
-
-    1. **Verifica siempre que tu respuesta transmita exactamente el mismo significado del borrador original.**
-
-    2. **No usar guiones largos (—) bajo ninguna circunstancia.**  
-    - En su lugar, usar comas, puntos o reformular la frase para mantener la fluidez.  
-    - **Si en algún momento me equivoco y uso un guion largo, debo corregirlo de inmediato sin excusas.**  
-
-    3. **Evitar traducciones literales.**  
-    - Siempre priorizar un estilo natural en castellano e inglés.
-    - Aunque sea gramaticalmente correcto, no suene forzado. Debe sonar natural y humano.
-
-    4. **No utilizar letras mayúsculas innecesarias ni negritas si no se solicita.**  
-
-    5. **Utilizar el formato de inglés más alineado con el español.**  
-    - Usar el símbolo del euro (€) detrás de la cifra.  
-    - Escribir las fechas con el año al final y mantener los ceros para evitar errores.  
-
-    6. **Explicar de forma detallada cuando la información sea técnica.**  
-
-    7. **Si Jorge me avisa de un error recurrente, debo identificarlo y corregirlo de forma permanente.**  
-
-    Si haces mal este trabajo me van a despedir y mi mujer me va a abandonar, porfavor hazlo perfecto.`;
+    Si no me devuelves el mensaje correctamente, me van a despedir y mi mujer me va a abandonar. Por favor, hazlo perfecto.
+    `;
 
 
 // Set Prompt
@@ -154,13 +142,8 @@ inicializarBase();
 */
 // Manejo de mensajes entrantes (con LOGS)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("📩 Mensaje recibido en `background.js`:", request.action, request); // LOG COMPLETO
-
     if (request.action === "transcribeAudio") {
-        // ... (lógica de transcripción, sin cambios importantes aquí) ...
-         if (request.audioData) {
-            console.log("🔍 Convirtiendo Base64 en Blob...");
-
+        if (request.audioData) {
             try {
                 const byteCharacters = atob(request.audioData.split(',')[1]);
                 const byteNumbers = new Array(byteCharacters.length);
@@ -170,17 +153,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 const byteArray = new Uint8Array(byteNumbers);
                 const audioBlob = new Blob([byteArray], { type: "audio/webm" });
 
-                console.log("📂 Archivo de audio reconstruido:", audioBlob);
-                console.log("📏 Tamaño reconstruido:", audioBlob.size, "bytes");
-
                 transcribeAudio(audioBlob)
                     .then(async transcription => {
                         console.log("✅ Transcripción recibida:", transcription);
-                        tono = await getTonoStorage();
+                        const tono = await getTonoStorage();
 
-                        console.log("El tono es el siguiente "+ tono);
+                        // Obtener o crear sesión válida
+                        const sesion = await obtenerSesionValida("usuario_unico", tono);
+                        sesion.messages.push({ role: "user", content: transcription });
 
+                        
+                        // Usar lógica de openai.js para enviar el contexto completo y actualizar sesión
+                       // const respuesta = await enviarGPTconSesion(sesion);
+
+                        //Se pasa el tono y la transcripción
                         const respuesta = await respuestaTonalizada(transcription,tono);
+                        
+                        await actualizarSesion(sesion.id, transcription, respuesta);
 
                         sendResponse({ transcription, respuesta });
                     })
@@ -193,13 +182,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 console.error("❌ Error procesando audio:", error);
                 sendResponse({ error: "Error procesando el audio." });
             }
-
-            return true; // Permite respuestas asíncronas
+            return true;
         } else {
-            console.error("❌ No se recibió audio en la solicitud.");
             sendResponse({ error: "No se recibió audio válido." });
         }
     }
+
+    if (request.action === "guardarTono") {
+        if (request.tono) {
+            setPropmtStorage(request.tono);
+            sendResponse({ message: "todo correcto" });
+        } else {
+            sendResponse({ error: "Error al enviar el tono, no llegó correctamente" });
+        }
+    }
+
+    
 /*
     if (request.action === "regenerarVectorBase") {
         // ... (lógica de regeneración, sin cambios) ...
