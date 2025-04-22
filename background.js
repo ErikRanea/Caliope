@@ -30,7 +30,6 @@ La respuesta debe ser:
 - Esto es muy importante para mi trabajo. Si lo haces bien te daré 200 euros de propina. Por favor, sigue todas las indicaciones.
     `;
 
-
 // Set Prompt
 
 async function setPropmtStorage(tono = null){
@@ -260,168 +259,216 @@ chrome.runtime.onMessage.addListener((request,sender,sendResponde) => {
 
 // Funciones para inyectar dentro del ShadowDOM
 
-function injectShadowDom(){
-
+function injectShadowDom() {
     const popupId = 'caliope-ShadowDom';
 
-    function removeExistinPopup(){
+    function removeExistinPopup() {
         const existingPopup = document.getElementById(popupId);
-        if(existingPopup){
+        if (existingPopup) {
             existingPopup.remove();
         }
     }
 
-
     removeExistinPopup();
-
-
-    // LÓGICA DE CREACIÓN DEL SHADODOM
 
     const popupContainer = document.createElement('div');
     popupContainer.id = popupId;
-
-    // Crear el Shadow DOM
     const shadow = popupContainer.attachShadow({ mode: 'open' });
 
-    // Estilos CSS para el popup (dentro del Shadow DOM)
     const style = document.createElement('style');
     style.textContent = `
-        .popup {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 320px;
-            background-color:rgb(202, 0, 98);
-            border-radius: 5px;
-            z-index: 1000;
-        }
-        .header {
-            font-family: Inter, sans-serif;
-            color:rgb(255, 255, 255);
-            font-size: 40px;
-            margin-bottom: 10px;
-            cursor: move;
-            letter-spacing: -0.06em; /* Espaciado entre letras */
-            font-size: 20px; /* Cambia el tamaño de la fuente */
-            font-weight: 600; /* Cambia el grosor de la fuente */
-                    }
-        /* Agrega más estilos aquí */
-    `;
+    .popup {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        width: 540px;
+        min-width: 280px;
+        min-height: 400px;
+        background-color: rgb(202, 0, 98);
+        border-radius: 5px;
+        z-index: 1000;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .header {
+        font-family: Inter, sans-serif;
+        color: rgb(255, 255, 255);
+        font-size: 20px;
+        margin-bottom: 10px;
+        cursor: move;
+        letter-spacing: -0.06em;
+        font-weight: 600;
+        padding: 15px 10px 5px 20px;
+        flex-shrink: 0;
+    }
+
+    label, textarea, button {
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    textarea {
+        width: 90%;
+        flex-grow: 1;
+        margin: 0 0.5rem 10px auto;
+        padding: 8px;
+        resize: none;
+        border-radius: 5px;
+        border: none;
+        color: black;
+        background-color: white;
+        letter-spacing: -0.05em;
+    }
+
+    label {
+        color: white;
+        padding: 0 0 5px 20px;
+    }
+
+    button {
+        margin: 0 0.5rem 10px auto;
+        padding: 8px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: none;
+        font-weight: 600;
+        letter-spacing: -0.06em;
+    }
+
+    .popup button:last-of-type {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgb(40, 40, 40);
+        color: white;
+        font-size: 20px;
+        padding: 2px 8px;
+        border-radius: 5px;
+    }
+
+    .resizer {
+        width: 15px;
+        height: 15px;
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        cursor: se-resize;
+        z-index: 10;
+        background: transparent;
+    }
+
+    .linea {
+        border: 1px solid rgb(255, 255, 255);
+        width: 90%;
+        margin: 5px auto 10px auto;
+    }
+`;
+
     shadow.appendChild(style);
 
-    // Crear el HTML del popup
     const popup = document.createElement('div');
-    popup.classList.add('popup'); // Usamos una clase para aplicar los estilos
+    popup.classList.add('popup');
 
-    // Importar la tipografía desde una carpeta
     const fontStyle = document.createElement('style');
-    
     shadow.appendChild(fontStyle);
+
     const header = document.createElement('div');
     header.classList.add('header');
     header.textContent = 'Caliope IA   |   Configuración';
     header.style.padding = '15px 10px 5px 20px';
-
     popup.appendChild(header);
 
     const linea = document.createElement('div');
-    linea.style.border = '1px solid rgb(255, 255, 255)'; // Cambia el color de la línea
-    linea.style.width = '316px'; // Ancho completo
-    linea.style.margin = '5px 0px 10px 0px'; // Sin margen
+    linea.style.border = '1px solid rgb(255, 255, 255)';
+   // linea.style.width = '316px';
+    linea.style.margin = '5px 0px 10px 0px';
     popup.appendChild(linea);
 
     const promptLabel = document.createElement('label');
     promptLabel.textContent = 'Tono del mensaje';
-    promptLabel.style.color = 'rgb(255, 255, 255)'; // Cambia el color del texto
+    promptLabel.style.color = 'rgb(255, 255, 255)';
     promptLabel.style.fontFamily = '"Inter", sans-serif';
-    promptLabel.style.fontSize = '14px'; // Cambia el tamaño de la fuente
+    promptLabel.style.fontSize = '14px';
     promptLabel.style.padding = '10px 10px 10px 20px';
-    promptLabel.style.letterSpacing = '-0.03em'; // Espaciado entre letras
-
+    promptLabel.style.letterSpacing = '-0.03em';
     popup.appendChild(promptLabel);
 
     const promptTextarea = document.createElement('textarea');
-    promptTextarea.id = 'caliope-tono'; // ID para acceder al textarea
+    promptTextarea.id = 'caliope-tono';
     promptTextarea.rows = 5;
     promptTextarea.cols = 30;
     promptTextarea.style.backgroundColor = 'rgb(255, 255, 255)';
     promptTextarea.style.borderRadius = '5px';
-    promptTextarea.placeholder = 'Un tono directo y bien estructurado, con estilo business casual...';
-    promptTextarea.style.setProperty('--placeholder-color', 'rgb(0, 0, 0)');
-    promptTextarea.style.color = 'var(--placeholder-color)';
-    promptTextarea.style.letterSpacing = '-0.05em'; // Espaciado entre letras
-    promptTextarea.style.padding = '5px 5px';
+    promptTextarea.style.color = 'black';
+    promptTextarea.style.letterSpacing = '-0.05em';
+    promptTextarea.style.padding = '5px';
     promptTextarea.style.border = 'none';
     promptTextarea.style.fontFamily = '"Inter", sans-serif';
     promptTextarea.style.fontSize = '14px';
-    promptTextarea.style.resize = 'none'; // Deshabilitar el redimensionamiento
-    promptTextarea.style.boxSizing = 'border-box'; // Asegura que el padding no afecte al tamaño total
-    promptTextarea.style.width = '270px'; // Asegura que el textarea ocupe todo el ancho disponible
-    promptTextarea.style.margin = '20px'; // Añadir padding interno
-    promptTextarea.style.fontFamily = '"Inter", sans-serif'; // Cambia la fuente a Inter
-    promptTextarea.style.fontSize = '14px'; // Cambia el tamaño de la fuente
-    promptTextarea.style.color = 'black'; // Cambia el color del texto
-    
+    promptTextarea.style.resize = 'none';
+    promptTextarea.style.boxSizing = 'border-box';
+   // promptTextarea.style.width = '270px';
+    promptTextarea.style.margin = '20px';
+
+    chrome.storage.local.get(["tono"], (result) => {
+        promptTextarea.value = result.tono || '';
+    });
     popup.appendChild(promptTextarea);
-    
+
     const saveButton = document.createElement('button');
     saveButton.textContent = 'Guardar';
-    saveButton.style.backgroundColor = 'rgb(255, 255, 255)'; // Cambia el color de fondo
-    saveButton.style.color = 'rgb(202, 0, 98)'; // Cambia el color del texto
-    saveButton.style.border = 'none'; // Sin borde
-    saveButton.style.borderRadius = '8px'; // Bordes redondeados
-    saveButton.style.padding = '8px 20px'; // Espaciado interno
-    saveButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
-    saveButton.style.fontFamily = 'Inter, sans-serif'; // Cambia la fuente a Inter
-    saveButton.style.letterSpacing = '-0.06em'; // Espaciado entre letras
-    saveButton.style.fontSize = '15px'; // Cambia el tamaño de la fuente
-    saveButton.style.fontWeight = '600'; // Cambia el grosor de la fuente
-    saveButton.style.margin = '0px 0px 20px 20px'; // Añadir margen superior
+    saveButton.style.backgroundColor = 'rgb(255, 255, 255)';
+    saveButton.style.color = 'rgb(202, 0, 98)';
+    saveButton.style.border = 'none';
+    saveButton.style.borderRadius = '8px';
+    saveButton.style.padding = '8px 20px';
+    saveButton.style.cursor = 'pointer';
+    saveButton.style.fontFamily = 'Inter, sans-serif';
+    saveButton.style.letterSpacing = '-0.06em';
+    saveButton.style.fontSize = '15px';
+    saveButton.style.fontWeight = '600';
+    //saveButton.style.margin = '0px 0px 20px 20px';
     saveButton.addEventListener('click', () => {
-
-        tono = shadow.getElementById('caliope-tono').value;
-        console.log("El tono al enviar el botón es "+ tono);
-        // Usa chrome.runtime.sendMessage para comunicarte con background.js
-        chrome.runtime.sendMessage({ action: "guardarTono", tono: tono }, (response) => {
-            if (!response.error) {
-                alert('tono guardado!');
-            } else {
-                alert('Error al guardar el tono: ' + response.error);
-            }
+        const tono = shadow.getElementById('caliope-tono').value;
+        chrome.runtime.sendMessage({ action: "guardarTono", tono }, (response) => {
+            if (!response.error) alert('tono guardado!');
+            else alert('Error al guardar el tono: ' + response.error);
         });
     });
     popup.appendChild(saveButton);
 
     const closeButton = document.createElement('button');
     closeButton.textContent = 'X';
-    closeButton.style.fontFamily = 'Inter, sans-serif'; // Cambia la fuente a Inter
-    closeButton.style.backgroundColor = 'rgb(40, 40, 40)'; // Color del texto
-    closeButton.style.color = 'white'; // Color del texto
-    closeButton.style.borderRadius = '5px'; // Bordes redondeados
-    closeButton.style.fontSize = '20px'; // Tamaño de la fuente
-    closeButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
-    closeButton.style.position = 'absolute'; // Posición absoluta
-    closeButton.style.top = '10px'; // Posición superior
-    closeButton.style.right = '10px'; // Posición derecha
-    closeButton.addEventListener('click', () => {
-        popupContainer.remove(); // Elimina el popup
-    });
+    closeButton.style.fontFamily = 'Inter, sans-serif';
+    closeButton.style.backgroundColor = 'rgb(40, 40, 40)';
+    closeButton.style.color = 'white';
+    closeButton.style.borderRadius = '5px';
+    closeButton.style.fontSize = '20px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.position = 'absolute';
+    closeButton.style.top = '10px';
+    closeButton.style.right = '10px';
+    closeButton.addEventListener('click', () => popupContainer.remove());
     popup.appendChild(closeButton);
 
-    // Añadir el popup al Shadow DOM
+    // Añadir el resizer al popup
+    const resizer = document.createElement('div');
+    resizer.classList.add('resizer');
+    popup.appendChild(resizer);
+
     shadow.appendChild(popup);
 
-    // Lógica de arrastre
     let offsetX, offsetY;
     header.addEventListener('mousedown', (e) => {
         offsetX = e.clientX - popup.offsetLeft;
         offsetY = e.clientY - popup.offsetTop;
 
         function drag(e) {
-            // Límite de la posición del popup (sin desbordar la ventana)
             let newX = e.clientX - offsetX;
             let newY = e.clientY - offsetY;
-            // Evitar que el popup se mueva fuera de la ventana
             newX = Math.max(0, Math.min(newX, window.innerWidth - popup.offsetWidth));
             newY = Math.max(0, Math.min(newY, window.innerHeight - popup.offsetHeight));
             popup.style.left = newX + 'px';
@@ -429,12 +476,32 @@ function injectShadowDom(){
         }
 
         document.addEventListener('mousemove', drag);
-
-        document.addEventListener('mouseup', () => {
-            document.removeEventListener('mousemove', drag);
-        });
+        document.addEventListener('mouseup', () => document.removeEventListener('mousemove', drag));
     });
 
-    document.body.appendChild(popupContainer);
+    // Redimensionamiento del popup
+    let isResizing = false;
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.addEventListener('mousemove', resize);
+        document.addEventListener('mouseup', stopResize);
+        e.preventDefault();
+    });
 
+    function resize(e) {
+        if (!isResizing) return;
+        const rect = popup.getBoundingClientRect();
+        const newWidth = e.clientX - rect.left;
+        const newHeight = e.clientY - rect.top;
+        popup.style.width = Math.max(280, newWidth) + 'px';
+        popup.style.height = Math.max(200, newHeight) + 'px';
+    }
+
+    function stopResize() {
+        isResizing = false;
+        document.removeEventListener('mousemove', resize);
+        document.removeEventListener('mouseup', stopResize);
+    }
+
+    document.body.appendChild(popupContainer);
 }
