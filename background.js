@@ -156,7 +156,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         // Usar lógica de openai.js para enviar el contexto completo y actualizar sesión
                        // const respuesta = await enviarGPTconSesion(sesion);
 
-                        //Se pasa el tono y la transcripción
                         const respuesta = await respuestaTonalizada(transcription,tono);
                         
                         await actualizarSesion(sesion.id, transcription, respuesta);
