@@ -2,9 +2,9 @@
 {
   "manifest_version": 3,
   "name": "Caliope IA asistente",
-  "version": "1.1.1",
+  "version": "1.2.2",
   "description": "Extensión de Chrome que permite dictar respuestas en WhatsApp Web, transcribirlas y reformularlas con un tono corporativo.",
-  "permissions": ["activeTab", "storage", "scripting","windows","microphone"],
+  "permissions": ["activeTab", "storage", "scripting","windows"],
   "host_permissions": [
   "https://web.whatsapp.com/*"
   ],

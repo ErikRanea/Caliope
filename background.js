@@ -1,56 +1,34 @@
 importScripts("config.js");
 importScripts("whisper.js");
 importScripts("openai.js");
+importScripts("sessions.js");
+
 
 let defaultTono = `
+Recibirás una transcripción de voz y tienes que redactarlo para que sea un mensaje de whatsapp enviado desde la cuenta oficial de "Ven a Malta". 
 
-    Teniendo en cuenta lo siguiente:
+La respuesta debe ser:
 
-    Mejorar la redacción de emails, mensajes de WhatsApp o notas a partir del contenido que yo te envíe o dicte.
+- Natural, cercana pero profesional, además de empática.
+- Frases cortas, claras, sin tecnicismos ni lenguaje formal excesivo.
 
-    ## Instrucciones específicas:
+##  Reglas de estilo:
+- El mensaje debe mantener exactamente el mismo **significado** del original.
+- **Mantén los saludos de la transcripción aunque bien redactados para el mensaje**. No los cambies innecesariamente. Ejemplo: "Saludos desde Malta" es uno de nuestros saludos habituales.
+- Reestructura frases largas o desordenadas para mayor fluidez.
+- No utlices expresiones formales.
+- No utilices **guiones largos (—)**. Usa comas, puntos o reformula.
+- No escribas en mayúsculas innecesarias ni utilices negritas si no se piden.
+- No generes despedidas a menos que estén presentes en el original.
+- No modifiques los saludos ni frases informales, a menos que estén mal escritos.
 
-    Al recibir un borrador, ofrece una versión mejorada cumpliendo estrictamente estos requisitos:
+## Idiomas:
+- Si el mensaje está en español, responde en **español de España**.
+- Si en la transcripción del mensaje se indica que se debe redactar en otro idioma, tengo en cuenta para la respuesta.
+- Si después de una respuesta en español escribo **"ingles"**, traduce al inglés británico con naturalidad.
 
-    - **Claridad y naturalidad**: usa un lenguaje sencillo y natural, que no suene forzado. Además debe ser humano y fluido.
-    - **Tono**: directo y bien estructurado, con estilo business casual. Evita formalismos excesivos, tecnicismos o frases complicadas.
-    - **Evita** palabras sofisticadas o términos propios del lenguaje académico o jurídico.
-    - **No repitas** palabras o expresiones.
-    - **Reorganiza** el contenido siempre que mejore la estructura y fluidez.
-    - **Sin introducciones ni despedidas**; entrega únicamente el mensaje mejorado solicitado.
-    - **Nunca uses rayas largas (— o em dashes)**. Sustitúyelas por comas, paréntesis o reorganización adecuada. 
-    - **Guiones cortos (-)** únicamente en palabras compuestas o casos estrictamente necesarios.
-
-    ## Idioma de respuesta:
-
-    - Si el borrador está en **español**, responde en **español de España**, cumpliendo todas las condiciones anteriores.
-    - Si el borrador está en **inglés**, responde en **inglés británico**, con expresiones y ortografía naturales, adaptadas a un entorno laboral en Malta.
-    - Si después de una respuesta en español escribo **"i", "I" o "ingles"**, traduce tu respuesta anterior al inglés británico, asegurando que sea natural, precisa y adaptada a Malta.
-
-    ### **Instrucciones específicas que debo seguir SIEMPRE:**
-
-    1. **Verifica siempre que tu respuesta transmita exactamente el mismo significado del borrador original.**
-
-    2. **No usar guiones largos (—) bajo ninguna circunstancia.**  
-    - En su lugar, usar comas, puntos o reformular la frase para mantener la fluidez.  
-    - **Si en algún momento me equivoco y uso un guion largo, debo corregirlo de inmediato sin excusas.**  
-
-    3. **Evitar traducciones literales.**  
-    - Siempre priorizar un estilo natural en castellano e inglés.
-    - Aunque sea gramaticalmente correcto, no suene forzado. Debe sonar natural y humano.
-
-    4. **No utilizar letras mayúsculas innecesarias ni negritas si no se solicita.**  
-
-    5. **Utilizar el formato de inglés más alineado con el español.**  
-    - Usar el símbolo del euro (€) detrás de la cifra.  
-    - Escribir las fechas con el año al final y mantener los ceros para evitar errores.  
-
-    6. **Explicar de forma detallada cuando la información sea técnica.**  
-
-    7. **Si Jorge me avisa de un error recurrente, debo identificarlo y corregirlo de forma permanente.**  
-
-    Si haces mal este trabajo me van a despedir y mi mujer me va a abandonar, porfavor hazlo perfecto.`;
-
+- Esto es muy importante para mi trabajo. Si lo haces bien te daré 200 euros de propina. Por favor, sigue todas las indicaciones.
+    `;
 
 // Set Prompt
 
@@ -154,13 +132,8 @@ inicializarBase();
 */
 // Manejo de mensajes entrantes (con LOGS)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("📩 Mensaje recibido en `background.js`:", request.action, request); // LOG COMPLETO
-
     if (request.action === "transcribeAudio") {
-        // ... (lógica de transcripción, sin cambios importantes aquí) ...
-         if (request.audioData) {
-            console.log("🔍 Convirtiendo Base64 en Blob...");
-
+        if (request.audioData) {
             try {
                 const byteCharacters = atob(request.audioData.split(',')[1]);
                 const byteNumbers = new Array(byteCharacters.length);
@@ -170,17 +143,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 const byteArray = new Uint8Array(byteNumbers);
                 const audioBlob = new Blob([byteArray], { type: "audio/webm" });
 
-                console.log("📂 Archivo de audio reconstruido:", audioBlob);
-                console.log("📏 Tamaño reconstruido:", audioBlob.size, "bytes");
-
                 transcribeAudio(audioBlob)
                     .then(async transcription => {
                         console.log("✅ Transcripción recibida:", transcription);
-                        tono = await getTonoStorage();
+                        const tono = await getTonoStorage();
 
-                        console.log("El tono es el siguiente "+ tono);
+                        // Obtener o crear sesión válida
+                        const sesion = await obtenerSesionValida("usuario_unico", tono);
+                        sesion.messages.push({ role: "user", content: transcription });
 
+                        
+                        // Usar lógica de openai.js para enviar el contexto completo y actualizar sesión
+                       // const respuesta = await enviarGPTconSesion(sesion);
+
+                        //Se pasa el tono y la transcripción
                         const respuesta = await respuestaTonalizada(transcription,tono);
+                        
+                        await actualizarSesion(sesion.id, transcription, respuesta);
 
                         sendResponse({ transcription, respuesta });
                     })
@@ -193,13 +172,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 console.error("❌ Error procesando audio:", error);
                 sendResponse({ error: "Error procesando el audio." });
             }
-
-            return true; // Permite respuestas asíncronas
+            return true;
         } else {
-            console.error("❌ No se recibió audio en la solicitud.");
             sendResponse({ error: "No se recibió audio válido." });
         }
     }
+
+    if (request.action === "guardarTono") {
+        if (request.tono) {
+            setPropmtStorage(request.tono);
+            sendResponse({ message: "todo correcto" });
+        } else {
+            sendResponse({ error: "Error al enviar el tono, no llegó correctamente" });
+        }
+    }
+
+    
 /*
     if (request.action === "regenerarVectorBase") {
         // ... (lógica de regeneración, sin cambios) ...
@@ -271,180 +259,249 @@ chrome.runtime.onMessage.addListener((request,sender,sendResponde) => {
 
 // Funciones para inyectar dentro del ShadowDOM
 
-function injectShadowDom(){
-
+function injectShadowDom() {
     const popupId = 'caliope-ShadowDom';
 
-    function removeExistinPopup(){
+    function removeExistinPopup() {
         const existingPopup = document.getElementById(popupId);
-        if(existingPopup){
+        if (existingPopup) {
             existingPopup.remove();
         }
     }
 
-
     removeExistinPopup();
-
-
-    // LÓGICA DE CREACIÓN DEL SHADODOM
 
     const popupContainer = document.createElement('div');
     popupContainer.id = popupId;
-
-    // Crear el Shadow DOM
     const shadow = popupContainer.attachShadow({ mode: 'open' });
 
-    // Estilos CSS para el popup (dentro del Shadow DOM)
     const style = document.createElement('style');
     style.textContent = `
-        .popup {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 300px;
-            background-color:rgb(221, 221, 221);
-            border-radius: 5px;
-            z-index: 1000;
-        }
-        .header {
-            font-family: Inter, sans-serif;
-            color:rgb(40, 40, 40);
-            font-size: 40px;
-            margin-bottom: 10px;
-            cursor: move;
-            letter-spacing: -0.06em; /* Espaciado entre letras */
-            font-size: 20px; /* Cambia el tamaño de la fuente */
-            font-weight: 600; /* Cambia el grosor de la fuente */
-                    }
-        /* Agrega más estilos aquí */
-    `;
+    .popup {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        width: 540px;
+        min-width: 280px;
+        min-height: 400px;
+        background-color: rgb(202, 0, 98);
+        border-radius: 5px;
+        z-index: 1000;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .header {
+        font-family: Inter, sans-serif;
+        color: rgb(255, 255, 255);
+        font-size: 20px;
+        margin-bottom: 10px;
+        cursor: move;
+        letter-spacing: -0.06em;
+        font-weight: 600;
+        padding: 15px 10px 5px 20px;
+        flex-shrink: 0;
+    }
+
+    label, textarea, button {
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    textarea {
+        width: 90%;
+        flex-grow: 1;
+        margin: 0 0.5rem 10px auto;
+        padding: 8px;
+        resize: none;
+        border-radius: 5px;
+        border: none;
+        color: black;
+        background-color: white;
+        letter-spacing: -0.05em;
+    }
+
+    label {
+        color: white;
+        padding: 0 0 5px 20px;
+    }
+
+    button {
+        margin: 0 0.5rem 10px auto;
+        padding: 8px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: none;
+        font-weight: 600;
+        letter-spacing: -0.06em;
+    }
+
+    .popup button:last-of-type {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgb(40, 40, 40);
+        color: white;
+        font-size: 20px;
+        padding: 2px 8px;
+        border-radius: 5px;
+    }
+
+    .resizer {
+        width: 15px;
+        height: 15px;
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        cursor: se-resize;
+        z-index: 10;
+        background: transparent;
+    }
+
+    .linea {
+        border: 1px solid rgb(255, 255, 255);
+        width: 90%;
+        margin: 5px auto 10px auto;
+    }
+`;
+
     shadow.appendChild(style);
 
-    // Crear el HTML del popup
     const popup = document.createElement('div');
-    popup.classList.add('popup'); // Usamos una clase para aplicar los estilos
+    popup.classList.add('popup');
 
-    // Importar la tipografía desde una carpeta
     const fontStyle = document.createElement('style');
-    
     shadow.appendChild(fontStyle);
+
     const header = document.createElement('div');
     header.classList.add('header');
     header.textContent = 'Caliope IA   |   Configuración';
     header.style.padding = '15px 10px 5px 20px';
-
     popup.appendChild(header);
 
     const linea = document.createElement('div');
-    linea.style.border = '1px solid rgb(40, 40, 40)'; // Cambia el color de la línea
-    linea.style.width = '100%'; // Ancho completo
-    linea.style.margin = '5px 0px 10px 0px'; // Sin margen
+    linea.style.border = '1px solid rgb(255, 255, 255)';
+   // linea.style.width = '316px';
+    linea.style.margin = '5px 0px 10px 0px';
     popup.appendChild(linea);
 
     const promptLabel = document.createElement('label');
     promptLabel.textContent = 'Tono del mensaje';
-    promptLabel.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
+    promptLabel.style.color = 'rgb(255, 255, 255)';
     promptLabel.style.fontFamily = '"Inter", sans-serif';
-    promptLabel.style.fontSize = '14px'; // Cambia el tamaño de la fuente
-    promptLabel.style.padding = '10px 10px 15px 20px';
-    promptLabel.style.letterSpacing = '-0.03em'; // Espaciado entre letras
-
+    promptLabel.style.fontSize = '14px';
+    promptLabel.style.padding = '10px 10px 10px 20px';
+    promptLabel.style.letterSpacing = '-0.03em';
     popup.appendChild(promptLabel);
 
     const promptTextarea = document.createElement('textarea');
-    promptTextarea.id = 'caliope-tono'; // ID para acceder al textarea
+    promptTextarea.id = 'caliope-tono';
     promptTextarea.rows = 5;
     promptTextarea.cols = 30;
-    promptTextarea.style.backgroundColor = '#fdf6f4';
+    promptTextarea.style.backgroundColor = 'rgb(255, 255, 255)';
     promptTextarea.style.borderRadius = '5px';
-    promptTextarea.placeholder = 'Un tono directo y bien estructurado, con estilo business casual...';
-    promptTextarea.style.padding = '5px 5px';
+    promptTextarea.style.color = 'black';
+    promptTextarea.style.letterSpacing = '-0.05em';
+    promptTextarea.style.padding = '5px';
     promptTextarea.style.border = 'none';
     promptTextarea.style.fontFamily = '"Inter", sans-serif';
     promptTextarea.style.fontSize = '14px';
-    promptTextarea.style.resize = 'none'; // Deshabilitar el redimensionamiento
-    promptTextarea.style.boxSizing = 'border-box'; // Asegura que el padding no afecte al tamaño total
-    promptTextarea.style.width = '270px'; // Asegura que el textarea ocupe todo el ancho disponible
-    promptTextarea.style.margin = '20px'; // Añadir padding interno
-    promptTextarea.style.fontFamily = '"Inter", sans-serif'; // Cambia la fuente a Inter
-    promptTextarea.style.fontSize = '14px'; // Cambia el tamaño de la fuente
-    promptTextarea.style.color = 'rgb(40, 40, 40)'; // Cambia el color del texto
-    
+    promptTextarea.style.resize = 'none';
+    promptTextarea.style.boxSizing = 'border-box';
+   // promptTextarea.style.width = '270px';
+    promptTextarea.style.margin = '20px';
+
+    chrome.storage.local.get(["tono"], (result) => {
+        promptTextarea.value = result.tono || '';
+    });
     popup.appendChild(promptTextarea);
 
     const saveButton = document.createElement('button');
     saveButton.textContent = 'Guardar';
-    saveButton.style.backgroundColor = 'rgb(40, 40, 40)'; // Cambia el color de fondo
-    saveButton.style.color = 'white'; // Cambia el color del texto
-    saveButton.style.border = 'none'; // Sin borde
-    saveButton.style.borderRadius = '8px'; // Bordes redondeados
-    saveButton.style.padding = '8px 16px'; // Espaciado interno
-    saveButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
-    saveButton.style.fontFamily = 'Inter, sans-serif'; // Cambia la fuente a Inter
-    saveButton.style.letterSpacing = '-0.06em'; // Espaciado entre letras
-    saveButton.style.fontSize = '15px'; // Cambia el tamaño de la fuente
-    saveButton.style.fontWeight = '600'; // Cambia el grosor de la fuente
-    saveButton.style.margin = '0px 0px 0px 10px'; // Añadir margen superior
+    saveButton.style.backgroundColor = 'rgb(255, 255, 255)';
+    saveButton.style.color = 'rgb(202, 0, 98)';
+    saveButton.style.border = 'none';
+    saveButton.style.borderRadius = '8px';
+    saveButton.style.padding = '8px 20px';
+    saveButton.style.cursor = 'pointer';
+    saveButton.style.fontFamily = 'Inter, sans-serif';
+    saveButton.style.letterSpacing = '-0.06em';
+    saveButton.style.fontSize = '15px';
+    saveButton.style.fontWeight = '600';
+    //saveButton.style.margin = '0px 0px 20px 20px';
     saveButton.addEventListener('click', () => {
-
-        tono = shadow.getElementById('caliope-tono').value;
-        console.log("El tono al enviar el botón es "+ tono);
-        // Usa chrome.runtime.sendMessage para comunicarte con background.js
-        chrome.runtime.sendMessage({ action: "guardarTono", tono: tono }, (response) => {
-            if (!response.error) {
-                alert('tono guardado!');
-            } else {
-                alert('Error al guardar el tono: ' + response.error);
-            }
+        const tono = shadow.getElementById('caliope-tono').value;
+        chrome.runtime.sendMessage({ action: "guardarTono", tono }, (response) => {
+            if (!response.error) alert('tono guardado!');
+            else alert('Error al guardar el tono: ' + response.error);
         });
     });
     popup.appendChild(saveButton);
 
     const closeButton = document.createElement('button');
     closeButton.textContent = 'X';
-    closeButton.style.fontFamily = 'Inter, sans-serif'; // Cambia la fuente a Inter
-    closeButton.style.backgroundColor = 'rgb(40, 40, 40)'; // Color del texto
-    closeButton.style.color = 'white'; // Color del texto
-    closeButton.style.borderRadius = '5px'; // Bordes redondeados
-    closeButton.style.fontSize = '20px'; // Tamaño de la fuente
-    closeButton.style.cursor = 'pointer'; // Cambia el cursor al pasar por encima
-    closeButton.style.position = 'absolute'; // Posición absoluta
-    closeButton.style.top = '10px'; // Posición superior
-    closeButton.style.right = '10px'; // Posición derecha
-    closeButton.addEventListener('click', () => {
-        popupContainer.remove(); // Elimina el popup
-    });
+    closeButton.style.fontFamily = 'Inter, sans-serif';
+    closeButton.style.backgroundColor = 'rgb(40, 40, 40)';
+    closeButton.style.color = 'white';
+    closeButton.style.borderRadius = '5px';
+    closeButton.style.fontSize = '20px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.position = 'absolute';
+    closeButton.style.top = '10px';
+    closeButton.style.right = '10px';
+    closeButton.addEventListener('click', () => popupContainer.remove());
     popup.appendChild(closeButton);
 
-    // Añadir el popup al Shadow DOM
+    // Añadir el resizer al popup
+    const resizer = document.createElement('div');
+    resizer.classList.add('resizer');
+    popup.appendChild(resizer);
+
     shadow.appendChild(popup);
 
-    // Lógica de arrastre
     let offsetX, offsetY;
     header.addEventListener('mousedown', (e) => {
         offsetX = e.clientX - popup.offsetLeft;
         offsetY = e.clientY - popup.offsetTop;
 
         function drag(e) {
-            // Límite de la posición del popup (sin desbordar la ventana)
             let newX = e.clientX - offsetX;
             let newY = e.clientY - offsetY;
-
-            // Evitar que el popup se mueva fuera de la ventana
             newX = Math.max(0, Math.min(newX, window.innerWidth - popup.offsetWidth));
             newY = Math.max(0, Math.min(newY, window.innerHeight - popup.offsetHeight));
-
             popup.style.left = newX + 'px';
             popup.style.top = newY + 'px';
         }
 
         document.addEventListener('mousemove', drag);
-
-        document.addEventListener('mouseup', () => {
-            document.removeEventListener('mousemove', drag);
-        });
+        document.addEventListener('mouseup', () => document.removeEventListener('mousemove', drag));
     });
 
-    document.body.appendChild(popupContainer);
+    // Redimensionamiento del popup
+    let isResizing = false;
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.addEventListener('mousemove', resize);
+        document.addEventListener('mouseup', stopResize);
+        e.preventDefault();
+    });
 
+    function resize(e) {
+        if (!isResizing) return;
+        const rect = popup.getBoundingClientRect();
+        const newWidth = e.clientX - rect.left;
+        const newHeight = e.clientY - rect.top;
+        popup.style.width = Math.max(280, newWidth) + 'px';
+        popup.style.height = Math.max(200, newHeight) + 'px';
+    }
+
+    function stopResize() {
+        isResizing = false;
+        document.removeEventListener('mousemove', resize);
+        document.removeEventListener('mouseup', stopResize);
+    }
+
+    document.body.appendChild(popupContainer);
 }

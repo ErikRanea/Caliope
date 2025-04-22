@@ -150,6 +150,33 @@ async function respuestaTonalizada(transcripcion,tono) {
     return await enviarGPT(transcripcion, prompt);
 }
 
+async function enviarGPTconSesion(sesion) {
+    try {
+        const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${CONFIG.OPENAI_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: sesion.messages,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error("Error al procesar la respuesta de OpenAI (enviarGPTconSesion):", error);
+        return null;
+    }
+}
+
 /*
 
 async function reformularMensaje(mensajeOriginal){
