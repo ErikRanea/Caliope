@@ -21,18 +21,28 @@ function applyButtonStyle(button) {
 }
 
 // Inyecta la interfaz de usuario inicial
-function injectUI(whatsappContainer) {
-    if (!whatsappContainer) {
-        console.warn("⚠️ No se encontró el contenedor principal de WhatsApp.");
+function injectUI() {
+    const micButton = document.querySelector('button[aria-label="Mensaje de voz"]');
+    if (!micButton) {
+        console.warn("⚠️ No se encontró el botón de mensaje de voz.");
         return;
     }
+    // Encuentra el div contenedor que agrupa el botón de micrófono
+    const voiceContainer = micButton.closest('div.x9f619.x78zum5.x6s0dn4');
+    if (!voiceContainer) {
+        console.warn("⚠️ No se encontró el contenedor principal del micrófono.");
+        return;
+    }
+    // Evita duplicar el botón
+    if (document.getElementById('caliope-button')) return;
 
     caliopeButton = document.createElement('button');
     caliopeButton.innerHTML = '<i class="bi bi-soundwave"></i>';
     applyButtonStyle(caliopeButton);
     caliopeButton.id = 'caliope-button';
 
-    whatsappContainer.parentNode.insertBefore(caliopeButton, whatsappContainer.nextSibling);
+    // Inserta el botón al final del contenedor de voz
+    voiceContainer.appendChild(caliopeButton);
     console.log("✅ Botón de Caliope IA inyectado en WhatsApp Web.");
 
     caliopeButton.addEventListener('click', () => {
@@ -40,6 +50,7 @@ function injectUI(whatsappContainer) {
         createRecordingControls();
     });
 }
+
 
 // Crea los controles de grabación
 function createRecordingControls() {
@@ -374,12 +385,12 @@ document.head.appendChild(style);
 // Observa y reinyecta la UI
 function observeAndInject() {
     setInterval(() => {
-        let whatsappContainer = document.querySelector('._ak1r');
-        let botonCaliope = document.getElementById('caliope-button');
-        if (whatsappContainer && !botonCaliope) {
-            injectUI(whatsappContainer);
+        const micButton = document.querySelector('button[aria-label="Mensaje de voz"]');
+        const caliopeExists = document.getElementById('caliope-button');
+        if (micButton && !caliopeExists) {
+            injectUI();
         }
-    }, 100);
+    }, 500);
 }
 
 observeAndInject();
