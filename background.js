@@ -4,6 +4,21 @@ importScripts("openai.js");
 importScripts("sessions.js");
 
 
+const MAX_SIZE = 25 * 1024 * 1024; 
+
+// Función para transcribir blobs muy grandes en trozos de ≤ 25 MB
+async function transcribeLargo(blob) {
+  let resultado = "";
+  for (let offset = 0; offset < blob.size; offset += MAX_SIZE) {
+    const trozo = blob.slice(offset, offset + MAX_SIZE);
+    const parte = await transcribeAudio(trozo);
+    if (parte === null) throw new Error("Fallo en trozo " + (offset / MAX_SIZE));
+    resultado += parte + " ";
+  }
+  return resultado.trim();
+}
+
+
 let defaultTono = `
 
 Recibirás una transcripción de voz y deberás redactarla como si fuera un mensaje de WhatsApp enviado desde la cuenta oficial de "Ven a Malta".
@@ -138,90 +153,69 @@ inicializarBase();
 // Manejo de mensajes entrantes (con LOGS)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "transcribeAudio") {
-        if (request.audioData) {
-            try {
-                const byteCharacters = atob(request.audioData.split(',')[1]);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const audioBlob = new Blob([byteArray], { type: "audio/webm" });
-
-                transcribeAudio(audioBlob)
-                    .then(async transcription => {
-                        console.log("✅ Transcripción recibida:", transcription);
-                        const tono = await getTonoStorage();
-
-                        // Obtener o crear sesión válida
-                        const sesion = await obtenerSesionValida("usuario_unico", tono);
-                        sesion.messages.push({ role: "user", content: transcription });
-
-                        
-                        // Usar lógica de openai.js para enviar el contexto completo y actualizar sesión
-                       // const respuesta = await enviarGPTconSesion(sesion);
-
-                        const respuesta = await respuestaTonalizada(transcription,tono);
-                        
-                        await actualizarSesion(sesion.id, transcription, respuesta);
-
-                        sendResponse({ transcription, respuesta });
-                    })
-                    .catch(error => {
-                        console.error("🚨 Error en la transcripción:", error);
-                        sendResponse({ error: error.message });
-                    });
-
-            } catch (error) {
-                console.error("❌ Error procesando audio:", error);
-                sendResponse({ error: "Error procesando el audio." });
-            }
-            return true;
-        } else {
-            sendResponse({ error: "No se recibió audio válido." });
-        }
-    }
-
-    if (request.action === "guardarTono") {
-        if (request.tono) {
-            setPropmtStorage(request.tono);
-            sendResponse({ message: "todo correcto" });
-        } else {
-            sendResponse({ error: "Error al enviar el tono, no llegó correctamente" });
-        }
-    }
-
+        let audioPromise;
     
-/*
-    if (request.action === "regenerarVectorBase") {
-        // ... (lógica de regeneración, sin cambios) ...
-         console.log("🔄 Regenerando base de conocimientos...");
-        vectorizarBaseConocimientos().then(() => {
-            sendResponse({ status: "VectorBase regenerado correctamente." });
-        }).catch(error => {
-            console.error("❌ Error regenerando la base vectorizada:", error);
-            sendResponse({ error: "No se pudo regenerar VectorBase." });
-        });
-
-        return true;
-    }
-
-    if (request.action === "reformularMensaje") {
-        console.log("Reformulando el mensaje (background.js):", request.mensaje); // LOG del mensaje original
-        reformularMensaje(request.mensaje)
-            .then((response) => {
-                console.log("El mensaje ha sido reformulado con éxito (background.js):", response); // LOG de la respuesta
-                sendResponse({ reformulado: response });
-            })
-            .catch((error) => {
-                console.error("Hubo un error al reformular el mensaje (background.js):", error);
-                sendResponse({ error: "Error al reformular el mensaje: " + error.message });
-            });
-
-        return true; // MUY IMPORTANTE
-    }
-        */
-});
+        // Si recibimos un Blob directamente desde content-script
+        if (request.audioBlob) {
+          audioPromise = Promise.resolve(request.audioBlob);
+        }
+        // Fallback: base64 en audioData (legacy)
+        else if (request.audioData) {
+          try {
+            const byteCharacters = atob(request.audioData.split(',')[1]);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: "audio/webm" });
+            audioPromise = Promise.resolve(blob);
+          } catch (e) {
+            console.error("Error decodificando base64:", e);
+            sendResponse({ error: "Error procesando el audio base64." });
+            return true;
+          }
+        } else {
+          sendResponse({ error: "No se recibió audio válido." });
+          return true;
+        }
+    
+        // Procesar la transcripción (corte si es necesario)
+        audioPromise
+          .then(async blob => {
+            const tono = await getTonoStorage();
+            console.log("El tamaño del blob es de -> "+blob.size)
+            const transcription = blob.size > MAX_SIZE
+              ? await transcribeLargo(blob)
+              : await transcribeAudio(blob);
+            console.log("✅ Transcripción recibida:", transcription);
+    
+            // Gestionar sesión y respuesta tonalizada
+            const sesion = await obtenerSesionValida("usuario_unico", tono);
+            sesion.messages.push({ role: "user", content: transcription });
+            const respuesta = await respuestaTonalizada(transcription, tono);
+            await actualizarSesion(sesion.id, transcription, respuesta);
+    
+            sendResponse({ transcription, respuesta });
+          })
+          .catch(error => {
+            console.error("🚨 Error en la transcripción:", error);
+            sendResponse({ error: error.message });
+          });
+    
+        return true; // Mantener el canal abierto para enviResponse
+      }
+    
+      if (request.action === "guardarTono") {
+        if (request.tono) {
+          setPromptStorage(request.tono);
+          sendResponse({ message: "Tono guardado correctamente" });
+        } else {
+          sendResponse({ error: "No se recibió un tono válido." });
+        }
+      }
+    });
+    
 
 
 //--------------------------------------------------------------------------
